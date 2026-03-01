@@ -39,10 +39,14 @@ Open http://localhost:3000 in your browser and:
 
 ## Deploy to Production
 
-### Firebase Hosting (Recommended - ✅ WORKING)
+### ✅ Firebase Hosting (RECOMMENDED & WORKING)
+
+Your app is **already live** at: **https://lifefundies-d66e9.web.app**
+
+To update your deployment:
 
 ```bash
-# 1. Login to Firebase
+# 1. Login to Firebase (if not logged in)
 firebase login
 
 # 2. Build the app
@@ -52,25 +56,31 @@ npm run build
 firebase deploy
 ```
 
-**Your live URL:** https://lifefundies-d66e9.web.app
+**Why Firebase?**
+- ✅ Works perfectly with static export
+- ✅ PWA features work out of the box
+- ✅ Free SSL certificate
+- ✅ CDN included
+- ✅ Custom domain support
 
-### Vercel
+### Vercel (Alternative - Needs Configuration)
+
+If you want to use Vercel, you may need to configure it differently:
 
 ```bash
-# Build first
-npm run build
-
-# Deploy (make sure you're in the project directory)
+# Option 1: Deploy the out folder directly
+cd out
 vercel --prod
+
+# Option 2: Use Vercel dashboard
+# 1. Go to vercel.com
+# 2. Import your GitHub repo
+# 3. Set Build Command: npm run build
+# 4. Set Output Directory: out
+# 5. Click Deploy
 ```
 
-**Note:** A `vercel.json` is configured for static export. If deployment fails, try:
-```bash
-# Clean and rebuild
-rm -rf .next out
-npm run build
-vercel --prod
-```
+**Note:** Due to Turbopack and Tailwind CSS arbitrary value handling with static export, Vercel might require additional configuration. Firebase is the recommended deployment method for this setup.
 
 ### Other Static Hosts
 Upload the `out/` directory to:
