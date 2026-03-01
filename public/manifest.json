@@ -8,6 +8,7 @@
   "theme_color": "#10b981",
   "orientation": "portrait-primary",
   "categories": ["lifestyle", "health", "education"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-72x72.png",

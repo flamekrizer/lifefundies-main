@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Safe area insets for notched phones */
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+  --safe-area-left: env(safe-area-inset-left);
+  --safe-area-right: env(safe-area-inset-right);
 }
 
 @theme inline {
@@ -18,14 +24,45 @@
     --foreground: #ededed;
   }
 }
+
 *{
   pointer-events:auto;
 }
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
+
+/* Safe area support for PWA */
+.safe-area-top {
+  padding-top: max(0.875rem, var(--safe-area-top));
+}
+
+.safe-area-bottom {
+  padding-bottom: max(0.875rem, var(--safe-area-bottom));
+}
+
+/* Smooth scrolling for mobile */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hide scrollbar on mobile for cleaner app feel */
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  
+  body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 .menu-link {
   border-bottom: 1px solid rgba(255,255,255,0.15);
   padding-bottom: 12px;
@@ -36,4 +73,15 @@ body {
 .menu-link:hover {
   color: #3b82f6;
   padding-left: 6px;
+}
+
+/* Mobile app-like transitions */
+@media (display-mode: standalone) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  a, button {
+    touch-action: manipulation;
+  }
 }

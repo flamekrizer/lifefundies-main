@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/app/context/AuthContext";
 import ThemeProvider from "@/components/ThemeProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 export const metadata = {
   title: "LifeFundies - Life Guidance & Clarity",
@@ -61,7 +62,9 @@ export default function RootLayout({ children }) {
         <ServiceWorkerRegistration />
         <AuthProvider>
           <ThemeProvider>
-            {children}
+            <MobileAppLayout>
+              {children}
+            </MobileAppLayout>
           </ThemeProvider>
         </AuthProvider>
       </body>

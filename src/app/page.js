@@ -1,6 +1,7 @@
 import Hero from "@/components/Hero";
 import SocialBar from "@/components/SocialBar";
 import SideMenu from "@/components/SideMenu";
+import DesktopOnly from "@/components/DesktopOnly";
 
 import About from "@/components/About";
 
@@ -17,8 +18,10 @@ export default function Home() {;
   return (
     <>
       <Preloader />
-      <SocialBar />
-      <SideMenu />
+      <DesktopOnly>
+        <SocialBar />
+        <SideMenu />
+      </DesktopOnly>
       <Hero />
       <About />
       <Domain />
@@ -28,7 +31,9 @@ export default function Home() {;
       <Testimonials/>
       <FaqSection />
       <CTA />
-   <Footer />
+      <DesktopOnly>
+        <Footer />
+      </DesktopOnly>
    
     </> 
   );
