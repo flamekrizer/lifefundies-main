@@ -1,4 +1,5 @@
 import { useState } from "react";
+import InstallPWA from '@/components/InstallPWA';
 
 export default function DetailsStep({next,back}){
 
@@ -35,6 +36,8 @@ export default function DetailsStep({next,back}){
     className="mt-4 text-gray-400">
     ← Back
    </button>
+
+   <InstallPWA />
   </>
  )
 }

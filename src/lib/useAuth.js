@@ -1,19 +1,32 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase";
-import { useEffect, useState } from "react";
 
+/**
+ * useAuth
+ * Central hook to get current firebase user
+ */
+export default function useAuth() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-export const useAuth = () => {
-
-  const [user,setUser] = useState(null);
-
-  useEffect(()=>{
-    const unsub = onAuthStateChanged(auth,(u)=>{
-      setUser(u);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
     });
 
-    return ()=>unsub();
-  },[]);
+    return () => unsubscribe();
+  }, []);
 
-  return user;
-};
+  return {
+    user,          // firebase user object
+    loading,       // true until auth state resolved
+    isLoggedIn: !!user,
+    isAnonymous: user?.isAnonymous || false,
+    uid: user?.uid || null,
+    email: user?.email || null,
+  };
+}

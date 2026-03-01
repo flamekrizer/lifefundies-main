@@ -1,14 +1,12 @@
 "use client";
-import { useEffect } from "react";
+
+import  useAuth  from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 export default function ProtectedRoute({ children }) {
-  const auth = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-
-  const user = auth?.user;
-  const loading = auth?.loading;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -16,16 +14,13 @@ export default function ProtectedRoute({ children }) {
     }
   }, [user, loading, router]);
 
-  // ⛑️ SAFETY CHECK
-  if (!auth) return null;
-
-  if (loading) {
+  if (loading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         Loading...
       </div>
     );
   }
 
-  return user ? children : null;
+  return children;
 }

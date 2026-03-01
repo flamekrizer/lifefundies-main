@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import useAuth  from "@/lib/useAuth";
 import { logoutUser } from "@/lib/auth";
 
 export default function SideMenu({ open, setOpen }) {
@@ -54,6 +54,7 @@ export default function SideMenu({ open, setOpen }) {
           <div onClick={() => go("/guide")} className="menu-link">Become a Guide</div>
           <div onClick={() => go("/faq")} className="menu-link">FAQ</div>
           <div onClick={() => go("/team")} className="menu-link">Our Team</div>
+          {user && <div onClick={() => go("/profile")} className="menu-link">Profile</div>}
           <div onClick={() => go("/contact")} className="menu-link">Contact</div>
           
 

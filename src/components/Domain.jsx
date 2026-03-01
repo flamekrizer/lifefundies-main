@@ -26,7 +26,7 @@ export default function Domains() {
  };
 
  return (
-  <section className="bg-[url('/bg1.jpg')] bg-center bg-cover text-white py-32 relative">
+  <section className="bg-[url(/bg1.jpg)] bg-center bg-cover text-white py-32 relative">
 
    {/* HEADING */}
    <motion.h2 

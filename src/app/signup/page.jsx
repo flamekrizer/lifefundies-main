@@ -18,7 +18,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[url('/bg1.jpg')] bg-cover bg-center text-white">
+    <div className="min-h-screen flex items-center justify-center bg-[url(/bg1.jpg)] bg-cover bg-center text-white">
       <div className="bg-white/5 p-10 rounded-xl w-[360px]">
 
         <h2 className="text-2xl font-bold mb-6 text-center">

@@ -31,7 +31,7 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="text-gray-300 mb-8 text-center">
-            Have questions or need support? We're here to help!
+            Have questions or need support? We&apos;re here to help!
           </p>
           <form className="space-y-6">
             <div>

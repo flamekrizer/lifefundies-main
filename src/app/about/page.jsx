@@ -19,7 +19,8 @@ export default function AboutPage() {
       >
         ☰
       </button>
-      <SideMenu open={menuOpen} setOpen={setMenuOpen} />  
+      <SideMenu open={menuOpen} setOpen={setMenuOpen} /> 
+       
 
       {/* ================= HERO ================= */}
       <section className="relative h-[80vh] flex items-center justify-center text-center px-6">

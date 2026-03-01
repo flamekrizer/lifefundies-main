@@ -1,11 +1,12 @@
 "use client";
 import { motion } from "framer-motion";
+import { isHmrRefresh } from "next/dist/server/app-render/work-unit-async-storage.external";
 import Image from "next/image";
 
 export default function Footer() {
   return (
     <footer className="
-    bg-[url('/bg1.jpg')] bg-center bg-cover
+    bg-[url(/bg1.jpg)] bg-center bg-cover
     text-white pt-28 pb-10">
 
       <div className="max-w-7xl mx-auto px-6">
@@ -49,17 +50,19 @@ export default function Footer() {
             </h3>
 
             <ul className="space-y-4 text-gray-300 text-sm">
-              {[
-                "FREE GUIDANCE SESSION",
-                "PEER GUIDANCE SESSION",
-                "YOUNG MENTOR SESSION",
-                "SENIOR ADVISOR SESSION"
+              {
+              [
+
+                {name:"FREE GUIDANCE SESSION"},
+                {name:"PEER GUIDANCE SESSION"},
+                {name:"YOUNG MENTOR SESSION"},
+                {name:"SENIOR ADVISOR SESSION"}
               ].map((item,i)=>(
                 <li 
                   key={i}
                   className="hover:text-blue-400 
                   cursor-pointer transition">
-                  {item}
+                  {item.name}
                 </li>
               ))}
             </ul>

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 export default function GuidePage() {
   return (
-    <main className="bg-[url('/bg1.jpg')] bg-cover bg-center text-white">
+    <main className="bg-[url(/bg1.jpg)] bg-cover bg-center text-white">
 
       {/* HERO */}
       <section className="min-h-[60vh] 

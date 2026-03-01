@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { loginUser, googleLogin, anonymousLogin } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import React from "react";
 
 export default function Login() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-[url('/bg1.jpg')] bg-cover bg-center text-white">
+    <div className="min-h-screen flex justify-center items-center bg-[url(/bg1.jpg)] bg-cover bg-center text-white">
       <div className="bg-white/5 p-10 rounded-xl w-[350px]">
 
         <h2 className="text-2xl font-bold mb-6 text-center">
