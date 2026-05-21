@@ -2,7 +2,7 @@
 
 export default function Offline() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-900 dark:to-gray-800 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-emerald-50 dark:from-gray-900 dark:to-gray-800 px-4">
       <div className="max-w-md w-full text-center">
         {/* Offline Icon */}
         <div className="mb-8 flex justify-center">
@@ -25,10 +25,10 @@ export default function Offline() {
 
         {/* Message */}
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          You're Offline 🌱
+          You&apos;re Offline 🌱
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-          It looks like you've lost your internet connection. Please check your network and try again.
+          It looks like you&apos;ve lost your internet connection. Please check your network and try again.
         </p>
 
         {/* Actions */}

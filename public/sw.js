@@ -1,130 +1,144 @@
 // LifeFundies Service Worker
-const CACHE_NAME = 'lifefundies-v1';
+// Production-safe PWA caching strategy
+
+const CACHE_VERSION = 'lifefundies-v3';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = '/offline.html';
 
-// Assets to cache on install
+// Files to precache
 const PRECACHE_ASSETS = [
   '/',
   '/offline.html',
   '/manifest.json',
-  // Add more critical assets here
+  '/favicon.ico',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
 ];
 
-// Install event - precache assets
+// Install
 self.addEventListener('install', (event) => {
-  console.log('[ServiceWorker] Installing...');
-  
+  console.log('[SW] Installing...');
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Precaching assets');
+    caches.open(STATIC_CACHE).then((cache) => {
+      console.log('[SW] Precaching core assets');
       return cache.addAll(PRECACHE_ASSETS);
     })
   );
-  
+
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate
 self.addEventListener('activate', (event) => {
-  console.log('[ServiceWorker] Activating...');
-  
+  console.log('[SW] Activating...');
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[ServiceWorker] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+    (async () => {
+      const keys = await caches.keys();
+
+      await Promise.all(
+        keys.map((key) => {
+          if (![STATIC_CACHE, RUNTIME_CACHE].includes(key)) {
+            console.log('[SW] Deleting old cache:', key);
+            return caches.delete(key);
           }
         })
       );
-    })
+
+      await self.clients.claim();
+    })()
   );
-  
-  self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  const { request } = event;
 
-  // Handle navigation requests (pages)
-  if (event.request.mode === 'navigate') {
+  // Only same-origin requests
+  if (!request.url.startsWith(self.location.origin)) return;
+
+  // Ignore non-GET requests
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  // 1) NEXT BUILD FILES (JS/CSS chunks) -> Cache First
+  if (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.jpeg') ||
+    url.pathname.endsWith('.svg') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.js')
+  ) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Cache successful responses
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-          return response;
-        })
-        .catch(() => {
-          // If offline, try to serve from cache
-          return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // If not in cache, show offline page
-            return caches.match(OFFLINE_URL);
-          });
-        })
-    );
-    return;
-  }
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
 
-  // Handle other requests (CSS, JS, images, etc.)
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached version
-        return cachedResponse;
-      }
+        return fetch(request).then((response) => {
+          if (!response || response.status !== 200) return response;
 
-      // Fetch from network
-      return fetch(event.request)
-        .then((response) => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Cache the fetched resource
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(request, clone);
           });
 
           return response;
-        })
-        .catch(() => {
-          // Return offline page for failed image requests, etc.
-          if (event.request.destination === 'image') {
-            // You could return a placeholder image here
-            return new Response('', { status: 404 });
-          }
         });
-    })
-  );
-});
-
-// Listen for messages from the client
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'CACHE_URLS') {
-    event.waitUntil(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.addAll(event.data.payload);
       })
     );
+    return;
+  }
+
+  // 2) PAGE NAVIGATION -> Network First
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(request, clone);
+          });
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached || caches.match(OFFLINE_URL);
+        })
+    );
+    return;
+  }
+
+  // 3) OTHER REQUESTS -> Stale While Revalidate
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => {
+              cache.put(request, clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => cached);
+
+      return cached || networkFetch;
+    })
+  );
+});
+
+// Messages from app
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 
-console.log('[ServiceWorker] Loaded');
+console.log('[SW] Loaded:', CACHE_VERSION);

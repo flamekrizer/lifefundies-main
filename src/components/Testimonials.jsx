@@ -50,12 +50,12 @@ export default function Testimonials() {
 
       {/* Heading */}
       <motion.h2
-        initial={{opacity:0,y:30}}
-        whileInView={{opacity:1,y:0}}
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
         className="text-4xl md:text-6xl 
         font-bold text-center mb-6"
       >
-        What People Say About  
+        What People Say About
         <span className="text-blue-500"> LifeFundies</span>
       </motion.h2>
 
@@ -68,13 +68,13 @@ export default function Testimonials() {
       grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 
       gap-10 px-6">
 
-        {reviews.map((item,i)=>(
+        {reviews.map((item, i) => (
           <motion.div
             key={i}
-            initial={{opacity:0,y:20}}
-            whileInView={{opacity:1,y:0}}
-            transition={{delay:i*0.1}}
-            whileHover={{scale:1.04}}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            whileHover={{ scale: 1.04 }}
             className="bg-white/5 
             backdrop-blur-xl
             border border-white/10

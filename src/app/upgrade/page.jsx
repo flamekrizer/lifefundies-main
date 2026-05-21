@@ -30,7 +30,7 @@ export default function UpgradePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="bg-white/5 p-10 rounded-xl w-[360px]">
+      <div className="bg-white/5 p-10 rounded-xl w-90">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Upgrade Account
         </h2>

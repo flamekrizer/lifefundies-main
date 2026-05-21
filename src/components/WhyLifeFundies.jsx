@@ -30,14 +30,14 @@ const reasons = [
 
 export default function WhyLifeFundies() {
   return (
-    <section className="bg-[#f9fafb] text-black py-32"> 
-    {/* soft white */}
+    <section className="bg-[#f9fafb] text-black py-32">
+      {/* soft white */}
 
       {/* HEADING */}
       <motion.h2
-        initial={{opacity:0, y:30}}
-        whileInView={{opacity:1, y:0}}
-        transition={{duration:0.6}}
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
         className="text-4xl md:text-6xl font-bold text-center mb-6"
       >
         Why <span className="text-blue-500">LifeFundies</span>?
@@ -52,13 +52,13 @@ export default function WhyLifeFundies() {
       grid-cols-1 md:grid-cols-2 lg:grid-cols-3 
       gap-10 px-6">
 
-        {reasons.map((item,i)=>(
+        {reasons.map((item, i) => (
           <motion.div
             key={i}
-            initial={{opacity:0, y:20}}
-            whileInView={{opacity:1, y:0}}
-            transition={{delay:i*0.1}}
-            whileHover={{scale:1.05}}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            whileHover={{ scale: 1.05 }}
             className="bg-white 
             border border-black/20   /* DEFAULT BLACK */
             rounded-2xl

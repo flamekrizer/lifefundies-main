@@ -2,20 +2,18 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { ArrowLeft, Bell, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 
 export default function MobileTopBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPWA, setIsPWA] = useState(false);
-
-  useEffect(() => {
-    // Check if running as installed PWA
-    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
-                       window.navigator.standalone;
-    setIsPWA(isInstalled);
-  }, []);
+  const [isPWA] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(display-mode: standalone)').matches || !!window.navigator.standalone;
+  });
 
   // Only show on mobile and when installed as PWA
   if (!isPWA) return null;
@@ -24,7 +22,7 @@ export default function MobileTopBar() {
   const getPageTitle = () => {
     const routes = {
       '/': 'LifeFundies',
-      '/guide': 'Find Guides',
+      '/guides': 'Find Guides',
       '/book': 'Book Session',
       '/dashboard': 'My Dashboard',
       '/profile': 'My Profile',
@@ -37,12 +35,12 @@ export default function MobileTopBar() {
       '/upgrade': 'Upgrade',
       '/offline': 'Offline'
     };
-    
+
     // Check for dynamic routes
     if (pathname.startsWith('/team/')) {
       return 'Guide Profile';
     }
-    
+
     return routes[pathname] || 'LifeFundies';
   };
 
@@ -62,9 +60,9 @@ export default function MobileTopBar() {
             </button>
           ) : (
             <div className="w-8 h-8 relative">
-              <Image 
-                src="/logo.jpeg" 
-                alt="LifeFundies" 
+              <Image
+                src="/logo.jpeg"
+                alt="LifeFundies"
                 width={32}
                 height={32}
                 className="rounded-lg"
@@ -83,7 +81,7 @@ export default function MobileTopBar() {
             {/* Notification badge */}
             <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
           </button>
-          <button 
+          <button
             onClick={() => router.push('/profile')}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >

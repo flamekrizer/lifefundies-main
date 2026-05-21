@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactCompiler: true,
-  output: "export",
+  // Removed static export for dynamic booking features
+  // output: "export",
   images: {
     unoptimized: true,
   },

@@ -11,7 +11,7 @@ export default function Signup() {
   const handleSignup = async () => {
     try {
       await signupUser(email, password);
-      router.push("/guide");
+      router.push("/guides");
     } catch (err) {
       alert(err.message);
     }
@@ -19,7 +19,7 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[url(/bg1.jpg)] bg-cover bg-center text-white">
-      <div className="bg-white/5 p-10 rounded-xl w-[360px]">
+      <div className="bg-white/5 p-10 rounded-xl w-90">
 
         <h2 className="text-2xl font-bold mb-6 text-center">
           Create Account

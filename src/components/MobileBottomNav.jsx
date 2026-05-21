@@ -2,51 +2,49 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, BookOpen, User, Calendar, Menu } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPWA, setIsPWA] = useState(false);
-
-  useEffect(() => {
-    // Check if running as installed PWA
-    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
-                       window.navigator.standalone;
-    setIsPWA(isInstalled);
-  }, []);
+  const [isPWA] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(display-mode: standalone)').matches || !!window.navigator.standalone;
+  });
 
   // Only show on mobile and when installed as PWA
   if (!isPWA) return null;
 
   const navItems = [
-    { 
-      name: 'Home', 
-      icon: Home, 
+    {
+      name: 'Home',
+      icon: Home,
       path: '/',
       active: pathname === '/'
     },
-    { 
-      name: 'Guides', 
-      icon: BookOpen, 
-      path: '/guide',
-      active: pathname === '/guide'
+    {
+      name: 'Guides',
+      icon: BookOpen,
+      path: '/guides',
+      active: pathname === '/guides'
     },
-    { 
-      name: 'Book', 
-      icon: Calendar, 
+    {
+      name: 'Book',
+      icon: Calendar,
       path: '/book',
       active: pathname === '/book'
     },
-    { 
-      name: 'Dashboard', 
-      icon: Menu, 
+    {
+      name: 'Dashboard',
+      icon: Menu,
       path: '/dashboard',
       active: pathname === '/dashboard'
     },
-    { 
-      name: 'Profile', 
-      icon: User, 
+    {
+      name: 'Profile',
+      icon: User,
       path: '/profile',
       active: pathname === '/profile'
     },
@@ -61,20 +59,17 @@ export default function MobileBottomNav() {
             <button
               key={item.path}
               onClick={() => router.push(item.path)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                item.active 
-                  ? 'text-green-600 dark:text-green-400' 
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${item.active
+                  ? 'text-green-600 dark:text-green-400'
                   : 'text-gray-600 dark:text-gray-400'
-              }`}
+                }`}
             >
-              <Icon 
-                className={`w-6 h-6 mb-1 transition-transform ${
-                  item.active ? 'scale-110' : ''
-                }`} 
+              <Icon
+                className={`w-6 h-6 mb-1 transition-transform ${item.active ? 'scale-110' : ''
+                  }`}
               />
-              <span className={`text-xs font-medium ${
-                item.active ? 'font-semibold' : ''
-              }`}>
+              <span className={`text-xs font-medium ${item.active ? 'font-semibold' : ''
+                }`}>
                 {item.name}
               </span>
             </button>

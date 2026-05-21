@@ -6,9 +6,9 @@ export default function CTA() {
     <section className="bg-black text-white py-32">
 
       <motion.div
-        initial={{opacity:0, scale:0.9}}
-        whileInView={{opacity:1, scale:1}}
-        transition={{duration:0.6}}
+        initial={{ opacity: 0, scale: 0.9 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
         className="max-w-5xl mx-auto 
         bg-white/5 backdrop-blur-xl
         border border-white/10
@@ -24,7 +24,7 @@ export default function CTA() {
         </h2>
 
         <p className="text-gray-400 mb-10 text-lg">
-          Join 75+ successful sessions and take your first step 
+          Join 75+ successful sessions and take your first step
           towards clarity, confidence & growth.
         </p>
 

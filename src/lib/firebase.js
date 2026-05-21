@@ -13,7 +13,16 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
+const hasFirebaseConfig =
+  !!firebaseConfig.apiKey &&
+  !!firebaseConfig.authDomain &&
+  !!firebaseConfig.projectId &&
+  !!firebaseConfig.appId;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+const app = hasFirebaseConfig ? initializeApp(firebaseConfig) : null;
+
+// Avoid Auth initialization during server-side prerender/build.
+export const auth =
+  typeof window !== "undefined" && app ? getAuth(app) : null;
+
+export const db = app ? getFirestore(app) : null;

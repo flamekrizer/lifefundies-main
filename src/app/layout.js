@@ -4,6 +4,7 @@ import { AuthProvider } from "@/app/context/AuthContext";
 import ThemeProvider from "@/components/ThemeProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import MobileAppLayout from "@/components/MobileAppLayout";
+import CashfreeScript from "@/components/CashfreeScript";
 
 export const metadata = {
   title: "LifeFundies - Life Guidance & Clarity",
@@ -35,17 +36,17 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="LifeFundies" />
-        
+
         {/* Apple Touch Icons */}
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        
+
         {/* PWA Icons */}
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
-        
+
         {/* iOS Splash Screens - Optional */}
         <link
           rel="apple-touch-startup-image"
@@ -60,6 +61,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ServiceWorkerRegistration />
+        <CashfreeScript />
         <AuthProvider>
           <ThemeProvider>
             <MobileAppLayout>
@@ -71,4 +73,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-

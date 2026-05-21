@@ -19,8 +19,8 @@ export default function Footer() {
 
           {/* BRAND */}
           <motion.div
-            initial={{opacity:0,y:30}}
-            whileInView={{opacity:1,y:0}}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
           >
             <Image
               src="/logo.jpeg"
@@ -41,9 +41,9 @@ export default function Footer() {
 
           {/* QUICK SESSION */}
           <motion.div
-            initial={{opacity:0,y:30}}
-            whileInView={{opacity:1,y:0}}
-            transition={{delay:0.1}}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
             <h3 className="text-lg font-semibold mb-6 tracking-wider">
               QUICK SESSION
@@ -51,28 +51,28 @@ export default function Footer() {
 
             <ul className="space-y-4 text-gray-300 text-sm">
               {
-              [
+                [
 
-                {name:"FREE GUIDANCE SESSION"},
-                {name:"PEER GUIDANCE SESSION"},
-                {name:"YOUNG MENTOR SESSION"},
-                {name:"SENIOR ADVISOR SESSION"}
-              ].map((item,i)=>(
-                <li 
-                  key={i}
-                  className="hover:text-blue-400 
+                  { name: "FREE GUIDANCE SESSION" },
+                  { name: "PEER GUIDANCE SESSION" },
+                  { name: "YOUNG MENTOR SESSION" },
+                  { name: "SENIOR ADVISOR SESSION" }
+                ].map((item, i) => (
+                  <li
+                    key={i}
+                    className="hover:text-blue-400 
                   cursor-pointer transition">
-                  {item.name}
-                </li>
-              ))}
+                    {item.name}
+                  </li>
+                ))}
             </ul>
           </motion.div>
 
           {/* COMPANY */}
           <motion.div
-            initial={{opacity:0,y:30}}
-            whileInView={{opacity:1,y:0}}
-            transition={{delay:0.2}}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
             <h3 className="text-lg font-semibold mb-6 tracking-wider">
               COMPANY
@@ -85,8 +85,8 @@ export default function Footer() {
                 "Contact Us",
                 "Terms & Conditions",
                 "Privacy Policy"
-              ].map((item,i)=>(
-                <li 
+              ].map((item, i) => (
+                <li
                   key={i}
                   className="hover:text-blue-400 
                   cursor-pointer transition">
@@ -98,9 +98,9 @@ export default function Footer() {
 
           {/* CONTACT */}
           <motion.div
-            initial={{opacity:0,y:30}}
-            whileInView={{opacity:1,y:0}}
-            transition={{delay:0.3}}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
           >
             <h3 className="text-lg font-semibold mb-6 tracking-wider">
               GET IN TOUCH
@@ -117,10 +117,10 @@ export default function Footer() {
             {/* SOCIAL */}
             <div className="flex gap-4 mb-6">
               {[
-                {name:"in",color:"bg-blue-600"},
-                {name:"ig",color:"bg-pink-600"},
-                {name:"yt",color:"bg-red-600"},
-              ].map((s,i)=>(
+                { name: "in", color: "bg-blue-600" },
+                { name: "ig", color: "bg-pink-600" },
+                { name: "yt", color: "bg-red-600" },
+              ].map((s, i) => (
                 <div
                   key={i}
                   className={`${s.color} 

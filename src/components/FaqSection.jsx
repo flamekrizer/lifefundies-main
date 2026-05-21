@@ -40,16 +40,16 @@ export default function FaqSection() {
 
   return (
     <section className=" text-white py-24">
-        {/* HEADING */}
-        <motion.h2
-            initial={{opacity:0, y:30}}
-            whileInView={{opacity:1, y:0}}
-            transition={{duration:0.6}}
-            className="text-4xl md:text-6xl
+      {/* HEADING */}
+      <motion.h2
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="text-4xl md:text-6xl
             font-bold text-center mb-6"
-        >
-            Frequently Asked <span className="text-blue-500">Questions</span>
-        </motion.h2>
+      >
+        Frequently Asked <span className="text-blue-500">Questions</span>
+      </motion.h2>
 
       <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-10">
 

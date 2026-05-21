@@ -16,7 +16,7 @@ export default function SideMenu({ open, setOpen }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[99999]">
+    <div className="fixed inset-0 z-99999">
 
       {/* overlay */}
       <div
@@ -30,7 +30,7 @@ export default function SideMenu({ open, setOpen }) {
         animate={{ x: 0 }}
         transition={{ duration: 0.3 }}
         className="absolute right-0 top-0 
-        w-full sm:w-[420px] 
+        w-full sm:w-105 
         h-full bg-black 
         text-white p-8 overflow-y-auto"
       >
@@ -51,7 +51,7 @@ export default function SideMenu({ open, setOpen }) {
 
           <div onClick={() => go("/")} className="menu-link">Home</div>
           <div onClick={() => go("/about")} className="menu-link">About</div>
-          <div onClick={() => go("/guide")} className="menu-link">Become a Guide</div>
+          <div onClick={() => go("/guides")} className="menu-link">Guides</div>
           <div onClick={() => go("/faq")} className="menu-link">FAQ</div>
           <div onClick={() => go("/team")} className="menu-link">Our Team</div>
           {user && <div onClick={() => go("/profile")} className="menu-link">Profile</div>}
@@ -73,6 +73,10 @@ export default function SideMenu({ open, setOpen }) {
             <>
               <div onClick={() => go("/dashboard")} className="menu-link">
                 Dashboard
+              </div>
+
+              <div onClick={() => go("/sessions")} className="menu-link">
+                My Sessions
               </div>
 
               <div onClick={() => go("/book")} className="menu-link">

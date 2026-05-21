@@ -31,7 +31,7 @@ export default function ProfilePage() {
     router.push("/login");
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         Loading...
@@ -67,7 +67,7 @@ export default function ProfilePage() {
         {/* PROFILE CARD */}
         <section className="flex justify-center px-6 py-20">
           <div className="w-full max-w-md 
-                          bg-gradient-to-b from-white/10 to-white/5 
+                          bg-linear-to-b from-white/10 to-white/5 
                           backdrop-blur-xl 
                           rounded-3xl 
                           p-10 
