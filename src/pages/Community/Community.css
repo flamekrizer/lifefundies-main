@@ -154,8 +154,8 @@
 }
 
 .community__widget--cta {
-  background: linear-gradient(135deg, rgba(13,115,119,0.1), rgba(20,169,174,0.05));
-  border-color: rgba(13,115,119,0.3);
+  background: linear-gradient(135deg, var(--clr-primary-glow), var(--clr-bg-card));
+  border-color: var(--clr-primary-glow);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -190,7 +190,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;

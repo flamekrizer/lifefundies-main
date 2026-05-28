@@ -2,12 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import LandingPage from './pages/Landing/Landing'
-import { LoginPage, RegisterPage } from './pages/Auth/Auth'
+import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/Auth/Auth'
 import OnboardingPage from './pages/Onboarding/Onboarding'
 import DashboardPage from './pages/Dashboard/Dashboard'
 import MentorsPage from './pages/Mentors/Mentors'
 import CommunityPage from './pages/Community/Community'
 import SessionsPage from './pages/Sessions/Sessions'
+import SettingsPage from './pages/Settings/Settings'
 import MentorPortalPage from './pages/MentorPortal/MentorPortal'
 import AdminPage from './pages/Admin/Admin'
 import { useAuthStore } from './stores'
@@ -48,11 +49,13 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
         <Route path="/mentors" element={<PublicLayout><MentorsPage /></PublicLayout>} />
+        <Route path="/mentors/:id" element={<PublicLayout><MentorsPage /></PublicLayout>} />
         <Route path="/community" element={<PublicLayout><CommunityPage /></PublicLayout>} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Protected — User */}
         <Route path="/onboarding" element={
@@ -63,6 +66,9 @@ export default function App() {
         } />
         <Route path="/sessions" element={
           <ProtectedRoute><AppLayout><SessionsPage /></AppLayout></ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>
         } />
 
         {/* Protected — Mentor */}

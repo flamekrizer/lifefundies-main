@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { Search, Filter, Star, Users, CheckCircle, X } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
+import BookingModal from '../../components/BookingModal'
 import './Mentors.css'
 
 export default function MentorsPage() {
@@ -13,6 +14,20 @@ export default function MentorsPage() {
   )
   const [priceRange, setPriceRange] = useState<'all' | 'budget' | 'mid' | 'premium'>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [bookingMentor, setBookingMentor] = useState<any>(null)
+
+  useEffect(() => {
+    if (id) {
+      const mentor = MOCK_MENTORS.find(m => m.uid === id)
+      if (mentor) {
+        setBookingMentor(mentor)
+      }
+    } else {
+      setBookingMentor(null)
+    }
+  }, [id])
 
   const filtered = MOCK_MENTORS.filter(m => {
     const matchSearch = !search || m.displayName.toLowerCase().includes(search.toLowerCase()) ||
@@ -48,7 +63,7 @@ export default function MentorsPage() {
               <input
                 id="mentor-search"
                 type="search"
-                className="form-input mentors-search__input"
+                className="form-input mentors-search__input input-with-icon"
                 placeholder="Search mentors, expertise, domains..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -126,8 +141,12 @@ export default function MentorsPage() {
               {filtered.map((mentor, i) => (
                 <div key={mentor.uid} className={`mentor-card-full animate-fadeInUp delay-${((i % 3 + 1) * 100) as 100 | 200 | 300}`} id={`mentor-full-${mentor.uid}`}>
                   <div className="mentor-card-full__left">
-                    <div className="avatar avatar-xl" style={{ background: `hsl(${i * 80 + 30}, 60%, 40%)` }}>
-                      {getInitials(mentor.displayName)}
+                    <div className="avatar avatar-xl" style={{ background: `hsl(${i * 80 + 30}, 60%, 40%)`, overflow: 'hidden' }}>
+                      {mentor.photoURL ? (
+                        <img src={mentor.photoURL} alt={mentor.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        getInitials(mentor.displayName)
+                      )}
                     </div>
                     {mentor.isVerified && (
                       <div className="mentor-card-full__verified-badge">
@@ -196,6 +215,13 @@ export default function MentorsPage() {
           )}
         </div>
       </div>
+      {bookingMentor && (
+        <BookingModal
+          guide={bookingMentor}
+          isOpen={!!bookingMentor}
+          onClose={() => navigate('/mentors')}
+        />
+      )}
     </div>
   )
 }

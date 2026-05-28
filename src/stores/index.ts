@@ -19,24 +19,42 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 
 // ── App Store ──────────────────────────────────────
+export interface NotificationItem {
+  id: number
+  text: string
+  isRead: boolean
+}
+
 interface AppState {
   mentors: Mentor[]
   sessions: Session[]
   posts: Post[]
-  notifications: number
+  notificationsList: NotificationItem[]
   setMentors: (mentors: Mentor[]) => void
   setSessions: (sessions: Session[]) => void
   setPosts: (posts: Post[]) => void
-  setNotifications: (count: number) => void
+  setNotificationsList: (list: NotificationItem[]) => void
+  markAllNotificationsRead: () => void
+  markNotificationRead: (id: number) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   mentors: [],
   sessions: [],
   posts: [],
-  notifications: 3,
+  notificationsList: [
+    { id: 1, text: '📅 Priya Sharma confirmed your booking for tomorrow at 4:00 PM.', isRead: false },
+    { id: 2, text: "💬 New reply on your thread in the 'Career & Purpose' community!", isRead: false },
+    { id: 3, text: '🌿 Complete your onboarding questions to unlock matches in other domains.', isRead: true }
+  ],
   setMentors: (mentors) => set({ mentors }),
   setSessions: (sessions) => set({ sessions }),
   setPosts: (posts) => set({ posts }),
-  setNotifications: (count) => set({ notifications: count }),
+  setNotificationsList: (list) => set({ notificationsList: list }),
+  markAllNotificationsRead: () => set((state) => ({
+    notificationsList: state.notificationsList.map(n => ({ ...n, isRead: true }))
+  })),
+  markNotificationRead: (id) => set((state) => ({
+    notificationsList: state.notificationsList.map(n => n.id === id ? { ...n, isRead: true } : n)
+  })),
 }))

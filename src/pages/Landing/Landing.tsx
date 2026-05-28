@@ -54,9 +54,15 @@ function HeroSection() {
 
           <div className="hero__trust">
             <div className="hero__trust-avatars">
-              {['AS', 'PR', 'VK', 'TM', 'NR'].map((initials, i) => (
-                <div key={i} className="avatar avatar-sm hero__trust-avatar" style={{ background: `hsl(${i * 60}, 60%, 45%)`, marginLeft: i ? '-8px' : 0 }}>
-                  {initials}
+              {[
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50&h=50&fit=crop&crop=faces&q=80',
+                'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=50&h=50&fit=crop&crop=faces&q=80',
+                'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=50&h=50&fit=crop&crop=faces&q=80',
+                'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop&crop=faces&q=80',
+                'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=faces&q=80'
+              ].map((url, i) => (
+                <div key={i} className="avatar avatar-sm hero__trust-avatar" style={{ marginLeft: i ? '-8px' : 0, overflow: 'hidden', border: '2px solid var(--clr-bg-card)' }}>
+                  <img src={url} alt="User profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               ))}
             </div>
@@ -72,7 +78,9 @@ function HeroSection() {
             <div className="hero__card-bg" />
             <div className="hero__card">
               <div className="hero__card-header">
-                <div className="avatar avatar-md" style={{ background: 'linear-gradient(135deg, #0D7377, #14A9AE)' }}>PS</div>
+                <div className="avatar avatar-md" style={{ background: 'linear-gradient(135deg, #0D7377, #14A9AE)', overflow: 'hidden' }}>
+                  <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces&q=80" alt="Priya Sharma" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
                 <div>
                   <p className="hero__card-name">Priya Sharma</p>
                   <p className="body-sm text-muted">Career & Purpose Mentor</p>
@@ -231,8 +239,12 @@ function MentorsSection() {
           {MOCK_MENTORS.map((mentor, i) => (
             <div key={mentor.uid} className={`mentor-card animate-fadeInUp delay-${((i % 4 + 1) * 100) as 100 | 200 | 300 | 400}`} id={`mentor-${mentor.uid}`}>
               <div className="mentor-card__header">
-                <div className="avatar avatar-lg" style={{ background: `hsl(${i * 80}, 60%, 40%)` }}>
-                  {getInitials(mentor.displayName)}
+                <div className="avatar avatar-lg" style={{ background: `hsl(${i * 80}, 60%, 40%)`, overflow: 'hidden' }}>
+                  {mentor.photoURL ? (
+                    <img src={mentor.photoURL} alt={mentor.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    getInitials(mentor.displayName)
+                  )}
                 </div>
                 <div>
                   <p className="mentor-card__name">{mentor.displayName}</p>
@@ -294,7 +306,9 @@ function TestimonialsSection() {
               </div>
               <p className="testimonial-card__text">"{t.text}"</p>
               <div className="testimonial-card__author">
-                <div className="avatar avatar-md" style={{ background: `hsl(${i * 90}, 55%, 45%)` }}>{t.avatar}</div>
+                <div className="avatar avatar-md" style={{ overflow: 'hidden' }}>
+                  <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
                 <div>
                   <p className="testimonial-card__name">{t.name}</p>
                   <p className="body-sm text-muted">{t.role}</p>

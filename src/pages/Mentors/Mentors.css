@@ -37,8 +37,8 @@
 }
 
 .mentors-search__input {
-  padding-left: 2.75rem;
-  padding-right: 2.75rem;
+  padding-left: 2.75rem !important;
+  padding-right: 2.75rem !important;
 }
 
 .mentors-search__clear {

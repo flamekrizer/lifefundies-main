@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, BookOpen, Star, MessageSquare, Video } from 'lucide-react'
-import { getInitials } from '../../utils'
+import { Calendar, Clock, BookOpen, Star, MessageSquare, Video, X } from 'lucide-react'
+import { getInitials, MOCK_MENTORS } from '../../utils'
+import { useAuthStore } from '../../stores'
+// @ts-ignore
+import { getUserBookings } from '../../lib/bookingService'
+import VideoRoom from '../../components/VideoRoom'
 import './Sessions.css'
 
 const SESSIONS = [
@@ -15,8 +19,74 @@ const PAST_SESSIONS = [
 ]
 
 export default function SessionsPage() {
+  const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
   const [ratings, setRatings] = useState<Record<string, number>>({})
+  
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [sessionMentorName, setSessionMentorName] = useState('Priya Sharma')
+  const [bookings, setBookings] = useState<any[]>([])
+  const [loadingBookings, setLoadingBookings] = useState(false)
+
+  useEffect(() => {
+    if (user?.uid) {
+      setLoadingBookings(true)
+      getUserBookings(user.uid)
+        .then((data: any) => {
+          if (Array.isArray(data)) {
+            setBookings(data)
+          }
+        })
+        .catch((err: any) => {
+          console.error('Failed to load user bookings:', err)
+        })
+        .finally(() => {
+          setLoadingBookings(false)
+        })
+    }
+  }, [user?.uid])
+
+  const upcomingSessions = bookings
+    .filter(b => b.status === 'confirmed' || b.status === 'pending')
+    .map(b => {
+      const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
+      return {
+        id: b.id || b.bookingId,
+        mentor: mentor?.displayName || 'LifeFundies Mentor',
+        domain: b.domain,
+        date: b.sessionDate,
+        time: b.sessionTime,
+        duration: b.sessionDuration,
+        status: b.status,
+        price: b.price || b.finalAmount,
+        meetingLink: b.status === 'confirmed' ? '#' : null
+      }
+    })
+
+  const pastSessions = bookings
+    .filter(b => b.status === 'completed')
+    .map(b => {
+      const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
+      return {
+        id: b.id || b.bookingId,
+        mentor: mentor?.displayName || 'LifeFundies Mentor',
+        domain: b.domain,
+        date: b.sessionDate,
+        duration: b.sessionDuration,
+        status: 'completed',
+        price: b.price || b.finalAmount,
+        rating: b.rating || null,
+        hasRated: !!b.rating
+      }
+    })
+
+  const displayUpcoming = upcomingSessions.length > 0 ? upcomingSessions : SESSIONS
+  const displayPast = pastSessions.length > 0 ? pastSessions : PAST_SESSIONS
+
+  const handleJoinSession = (mentorName: string, id: string) => {
+    setSessionMentorName(mentorName)
+    setActiveSessionId(id)
+  }
 
   return (
     <div className="page-wrapper">
@@ -34,20 +104,27 @@ export default function SessionsPage() {
 
           <div className="community__tabs animate-fadeInUp delay-100" style={{ marginBottom: 'var(--sp-6)' }}>
             <button className={`community__tab ${activeTab === 'upcoming' ? 'community__tab--active' : ''}`} onClick={() => setActiveTab('upcoming')} id="tab-upcoming">
-              <Calendar size={14} /> Upcoming ({SESSIONS.length})
+              <Calendar size={14} /> Upcoming ({displayUpcoming.length})
             </button>
             <button className={`community__tab ${activeTab === 'past' ? 'community__tab--active' : ''}`} onClick={() => setActiveTab('past')} id="tab-past">
-              <BookOpen size={14} /> Past ({PAST_SESSIONS.length})
+              <BookOpen size={14} /> Past ({displayPast.length})
             </button>
           </div>
 
           {activeTab === 'upcoming' && (
             <div className="sessions-list animate-fadeInUp delay-200">
-              {SESSIONS.map(session => (
+              {displayUpcoming.map(session => (
                 <div key={session.id} className="session-detail-card" id={`session-detail-${session.id}`}>
                   <div className="session-detail-card__left">
-                    <div className="avatar avatar-xl" style={{ background: 'linear-gradient(135deg, var(--clr-primary), var(--clr-primary-light))' }}>
-                      {getInitials(session.mentor)}
+                    <div className="avatar avatar-xl" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                      {(() => {
+                        const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
+                        return mentor?.photoURL ? (
+                          <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          getInitials(session.mentor)
+                        );
+                      })()}
                     </div>
                     <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
                       {session.status}
@@ -64,10 +141,14 @@ export default function SessionsPage() {
                   </div>
                   <div className="session-detail-card__actions">
                     <p style={{ fontWeight: 700, color: 'var(--clr-primary-light)', marginBottom: 'var(--sp-3)' }}>₹{session.price}</p>
-                    {session.status === 'confirmed' && session.meetingLink ? (
-                      <a href={session.meetingLink} className="btn btn-primary" id={`join-${session.id}`}>
+                    {session.status === 'confirmed' ? (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => handleJoinSession(session.mentor, session.id)}
+                        id={`join-${session.id}`}
+                      >
                         <Video size={16} /> Join Session
-                      </a>
+                      </button>
                     ) : (
                       <button className="btn btn-outline" disabled>Awaiting Confirmation</button>
                     )}
@@ -80,11 +161,18 @@ export default function SessionsPage() {
 
           {activeTab === 'past' && (
             <div className="sessions-list animate-fadeInUp delay-200">
-              {PAST_SESSIONS.map(session => (
+              {displayPast.map(session => (
                 <div key={session.id} className="session-detail-card session-detail-card--past" id={`past-session-${session.id}`}>
                   <div className="session-detail-card__left">
-                    <div className="avatar avatar-xl" style={{ background: 'linear-gradient(135deg, var(--clr-accent), var(--clr-accent-light))' }}>
-                      {getInitials(session.mentor)}
+                    <div className="avatar avatar-xl" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                      {(() => {
+                        const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
+                        return mentor?.photoURL ? (
+                          <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          getInitials(session.mentor)
+                        );
+                      })()}
                     </div>
                     <span className="badge badge-secondary">Completed</span>
                   </div>
@@ -131,7 +219,7 @@ export default function SessionsPage() {
             </div>
           )}
 
-          {((activeTab === 'upcoming' && SESSIONS.length === 0) || (activeTab === 'past' && PAST_SESSIONS.length === 0)) && (
+          {((activeTab === 'upcoming' && displayUpcoming.length === 0) || (activeTab === 'past' && displayPast.length === 0)) && (
             <div className="sessions-page__empty">
               <Calendar size={48} style={{ color: 'var(--clr-text-subtle)' }} />
               <h3 className="heading-2">No sessions yet</h3>
@@ -141,6 +229,31 @@ export default function SessionsPage() {
           )}
         </div>
       </div>
+
+      {activeSessionId && (
+        <div className="video-modal-overlay">
+          <div className="video-modal-card animate-fadeInUp">
+            <div className="video-modal-header">
+              <span className="video-modal-title">Live Video Room — {sessionMentorName}</span>
+              <button 
+                type="button"
+                className="btn btn-ghost btn-sm video-modal-close-btn" 
+                onClick={() => setActiveSessionId(null)}
+                aria-label="Close video room"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <VideoRoom 
+              sessionId={activeSessionId}
+              userName={user?.displayName || 'Client'}
+              guideName={sessionMentorName}
+              onLeave={() => setActiveSessionId(null)}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

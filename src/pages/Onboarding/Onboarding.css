@@ -192,7 +192,7 @@
 
 .ob-domain-card--selected {
   border-color: var(--domain-color, var(--clr-primary)) !important;
-  background: rgba(13,115,119,0.08);
+  background: var(--clr-primary-glow);
   color: var(--clr-text) !important;
 }
 
@@ -252,7 +252,7 @@
   gap: var(--sp-2);
   padding: var(--sp-3);
   background: var(--clr-primary-glow);
-  border: 1px solid rgba(13,115,119,0.2);
+  border: 1px solid var(--clr-primary-glow);
   border-radius: var(--radius-md);
 }
 

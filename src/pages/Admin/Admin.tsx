@@ -139,8 +139,7 @@ export default function AdminPage() {
                     <input
                       id="admin-user-search"
                       type="search"
-                      className="form-input"
-                      style={{ padding: '0.5rem 1rem 0.5rem 2.25rem' }}
+                      className="form-input input-with-icon"
                       placeholder="Search users..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}

@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import type { User as UserType } from '../../types'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { auth, db } from '../../lib/firebase'
 import './Auth.css'
 
 export function LoginPage() {
@@ -18,21 +21,37 @@ export function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    // Simulate auth — replace with Firebase signInWithEmailAndPassword
-    await new Promise(r => setTimeout(r, 1200))
-    const mockUser: UserType = {
-      uid: 'demo-user',
-      displayName: 'Demo User',
-      email,
-      role: 'user',
-      domains: ['career', 'confidence'],
-      isAnonymous: false,
-      onboardingComplete: true,
-      createdAt: new Date(),
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const firebaseUser = userCredential.user
+      
+      // Fetch user profile from Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      const userData = userDoc.exists() ? userDoc.data() : {}
+      
+      const loggedInUser: UserType = {
+        uid: firebaseUser.uid,
+        displayName: firebaseUser.displayName || 'User',
+        email: firebaseUser.email || email,
+        role: userData.role || 'user',
+        domains: userData.domains || [],
+        isAnonymous: false,
+        onboardingComplete: userData.onboardingComplete || false,
+        createdAt: userData.createdAt?.toDate() || new Date(),
+      }
+      
+      setUser(loggedInUser)
+      if (loggedInUser.onboardingComplete) {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Failed to sign in')
+    } finally {
+      setLoading(false)
     }
-    setUser(mockUser)
-    navigate('/dashboard')
-    setLoading(false)
   }
 
   return (
@@ -40,7 +59,7 @@ export function LoginPage() {
       <div className="auth-card animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <div className="auth-logo__icon">LF</div>
+            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Welcome back</h1>
           <p className="body-sm text-muted">Sign in to continue your journey</p>
@@ -126,21 +145,36 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
-    const mockUser: UserType = {
-      uid: 'new-user',
-      displayName: form.name,
-      email: form.email,
-      phone: form.phone,
-      role: form.role,
-      domains: [],
-      isAnonymous: false,
-      onboardingComplete: false,
-      createdAt: new Date(),
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
+      const firebaseUser = userCredential.user
+      
+      // Update Auth Profile
+      await updateProfile(firebaseUser, { displayName: form.name })
+      
+      // Save user data to Firestore
+      const newUser: UserType = {
+        uid: firebaseUser.uid,
+        displayName: form.name,
+        email: form.email,
+        phone: form.phone,
+        role: form.role,
+        domains: [],
+        isAnonymous: false,
+        onboardingComplete: false,
+        createdAt: new Date(),
+      }
+      
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
+      
+      setUser(newUser)
+      navigate('/onboarding')
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || 'Failed to create account')
+    } finally {
+      setLoading(false)
     }
-    setUser(mockUser)
-    navigate('/onboarding')
-    setLoading(false)
   }
 
   return (
@@ -148,7 +182,7 @@ export function RegisterPage() {
       <div className="auth-card auth-card--wide animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <div className="auth-logo__icon">LF</div>
+            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Join LifeFundies</h1>
           <p className="body-sm text-muted">Start your journey to life clarity today</p>
@@ -250,6 +284,88 @@ export function RegisterPage() {
 
         <p className="auth-switch body-sm">
           Already have an account? <Link to="/login" className="auth-switch__link">Sign in</Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export function ForgotPasswordPage() {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    setMessage('')
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setMessage('Password reset email sent! Check your inbox for instructions.')
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Failed to send reset email')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card animate-scaleIn">
+        <div className="auth-card__header">
+          <div className="auth-logo">
+            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+          </div>
+          <h1 className="heading-1">Reset Password</h1>
+          <p className="body-sm text-muted">Enter your email to receive a password reset link</p>
+        </div>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {error && <div className="auth-error">{error}</div>}
+          {message && (
+            <div 
+              className="auth-success" 
+              style={{ 
+                color: '#10b981', 
+                backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+                padding: '0.75rem', 
+                borderRadius: '0.375rem', 
+                marginBottom: '1rem', 
+                fontSize: '0.875rem', 
+                textAlign: 'center',
+                border: '1px solid rgba(16, 185, 129, 0.2)'
+              }}
+            >
+              {message}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="reset-email">Email address</label>
+            <div className="input-wrapper">
+              <Mail size={16} className="input-icon" />
+              <input
+                id="reset-email"
+                type="email"
+                className="form-input input-with-icon"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary" id="reset-submit" disabled={loading} style={{ width: '100%', padding: '0.875rem' }}>
+            {loading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <>Send Reset Link <ArrowRight size={16} /></>}
+          </button>
+        </form>
+
+        <p className="auth-switch body-sm">
+          Remember your password? <Link to="/login" className="auth-switch__link">Sign in</Link>
         </p>
       </div>
     </div>

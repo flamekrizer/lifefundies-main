@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react'
-import { useAuthStore } from '../../stores'
+import { useAuthStore, useAppStore } from '../../stores'
 import { getInitials } from '../../utils'
 import './Navbar.css'
 
@@ -17,6 +17,9 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const { user, logout } = useAuthStore()
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { notificationsList, markAllNotificationsRead, markNotificationRead } = useAppStore()
+  const unreadCount = notificationsList.filter(n => !n.isRead).length
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -29,6 +32,7 @@ export default function Navbar() {
   useEffect(() => {
     setMenuOpen(false)
     setProfileOpen(false)
+    setShowNotifications(false)
   }, [location])
 
   const handleLogout = () => {
@@ -41,11 +45,7 @@ export default function Navbar() {
       <div className="container navbar__inner">
         {/* Logo */}
         <Link to="/" className="navbar__logo" aria-label="LifeFundies Home">
-          <div className="navbar__logo-icon">LF</div>
-          <div className="navbar__logo-text">
-            <span className="navbar__logo-name">LifeFundies</span>
-            <span className="navbar__logo-tagline">Redesigning Life Fundamentals</span>
-          </div>
+          <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '40px', objectFit: 'contain', display: 'block' }} />
         </Link>
 
         {/* Desktop Nav */}
@@ -66,10 +66,47 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
-              <button className="navbar__notif" aria-label="Notifications">
-                <Bell size={18} />
-                <span className="navbar__notif-badge">3</span>
-              </button>
+              <div className="navbar__notif-container" style={{ position: 'relative' }}>
+                <button 
+                  className="navbar__notif" 
+                  aria-label="Notifications"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="navbar__notif-badge">{unreadCount}</span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <div className="navbar__notifications-dropdown animate-fadeIn">
+                    <div className="navbar__dropdown-header-notif">
+                      <span className="body-sm font-semibold text-muted">Notifications</span>
+                      {unreadCount > 0 && (
+                        <button className="btn btn-ghost btn-sm" style={{ padding: 0, fontSize: '0.75rem', height: 'auto' }} onClick={markAllNotificationsRead}>
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="navbar__notifications-list">
+                      {notificationsList.length > 0 ? (
+                        notificationsList.map(n => (
+                          <div 
+                            key={n.id} 
+                            className={`navbar__notification-item ${!n.isRead ? 'navbar__notification-item--unread' : ''}`}
+                            onClick={() => markNotificationRead(n.id)}
+                          >
+                            {n.text}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="navbar__notification-item text-center text-muted" style={{ padding: '1rem' }}>
+                          No notifications
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="navbar__profile">
                 <button
                   className="navbar__profile-btn"

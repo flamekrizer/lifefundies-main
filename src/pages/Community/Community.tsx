@@ -85,8 +85,7 @@ export default function CommunityPage() {
                 <input
                   id="community-search"
                   type="search"
-                  className="form-input"
-                  style={{ paddingLeft: '2.75rem' }}
+                  className="form-input input-with-icon"
                   placeholder="Search posts..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}

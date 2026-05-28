@@ -1,0 +1,455 @@
+import { useState } from 'react';
+import { X, Phone, Video, MessageSquare, IndianRupee, Loader2, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import SlotSelection from './SlotSelection';
+import { useAuthStore } from '@/stores';
+import { LIFE_DOMAINS, type DomainId, type Mentor } from '@/types';
+import { initiateRazorpayPayment } from '@/lib/razorpay';
+// @ts-ignore
+import { createBooking, confirmPayment } from '@/lib/bookingService';
+import './BookingModal.css';
+
+interface BookingModalProps {
+  guide: any; // Can be Mentor (mock) or Guide (firestore)
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: (bookingId: string) => void;
+}
+
+export default function BookingModal({ guide, isOpen, onClose, onSuccess }: BookingModalProps) {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1); // 1: Domain & Mode, 2: Slot, 3: Confirm, 4: Success
+  const [selectedDomain, setSelectedDomain] = useState<any>(null);
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [selectedMode, setSelectedMode] = useState('video'); // video, audio, chat
+  const [issue, setIssue] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [bookingId, setBookingId] = useState('');
+
+  if (!isOpen || !guide) return null;
+
+  // Adapt guide properties dynamically to support both Firestore schema and Mock schema
+  const mentorId = guide.uid || guide.id;
+  const mentorName = guide.displayName || guide.name || 'Mentor';
+  const mentorPrice = guide.sessionPrice || guide.price || 399;
+  const rawDomains = guide.domains || [];
+
+  // Map domains to LIFE_DOMAINS objects
+  const mappedDomains = rawDomains
+    .map((d: any) => {
+      const dId = typeof d === 'string' ? d : d?.id;
+      return LIFE_DOMAINS.find(ld => ld.id === dId);
+    })
+    .filter(Boolean);
+
+  const modes = [
+    { id: 'video', name: 'Video Call', icon: Video, price: mentorPrice },
+    { id: 'audio', name: 'Audio Call', icon: Phone, price: Math.round(mentorPrice * 0.8) },
+    { id: 'chat', name: 'Chat Support', icon: MessageSquare, price: Math.round(mentorPrice * 0.6) },
+  ];
+
+  const activeModePrice = modes.find(m => m.id === selectedMode)?.price || mentorPrice;
+
+  const handleDomainSelect = (domain: any) => {
+    setSelectedDomain(domain);
+    setStep(2);
+  };
+
+  const handleSlotSelect = (slot: any) => {
+    setSelectedSlot(slot);
+  };
+
+  const handlePayment = async () => {
+    if (!user) {
+      setError('Please sign in or register to book a session.');
+      return;
+    }
+
+    if (!selectedSlot) {
+      setError('Please select an available time slot.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+
+      // 1. Create a pending booking in Firestore
+      console.log('Creating booking draft...');
+      const bookingResult = await createBooking({
+        userId: user.uid,
+        guideId: mentorId,
+        slotId: selectedSlot.id,
+        domain: selectedDomain?.label || selectedDomain?.name || 'General Life Guidance',
+        price: activeModePrice,
+        mode: selectedMode,
+        selectedIssue: issue || 'Not specified',
+        userNotes: issue || 'Not specified',
+      });
+
+      const currentBookingId = bookingResult.bookingId;
+      setBookingId(currentBookingId);
+
+      // 2. Launch Razorpay payment checkout in test mode
+      console.log('Initiating Razorpay checkout...');
+      await initiateRazorpayPayment({
+        amount: activeModePrice,
+        bookingId: currentBookingId,
+        mentorName: mentorName,
+        userDetails: {
+          id: user.uid,
+          name: user.displayName || 'LifeFundies Seeker',
+          email: user.email || '',
+          phone: user.phone || '',
+        },
+        onSuccess: async (paymentData) => {
+          try {
+            console.log('Razorpay success callback. Confirming payment in database...');
+            // 3. Update database: mark booking as paid and create sessions
+            await confirmPayment({
+              bookingId: currentBookingId,
+              paymentId: paymentData.razorpayPaymentId,
+              razorpayOrderId: paymentData.razorpayOrderId || '',
+              razorpayPaymentId: paymentData.razorpayPaymentId,
+              razorpaySignature: paymentData.razorpaySignature || '',
+            });
+
+            console.log('Booking & Payment successfully completed!');
+            setStep(4); // Move to Success screen
+            onSuccess?.(currentBookingId);
+          } catch (err: any) {
+            console.error('Payment database confirmation failed:', err);
+            setError('Payment succeeded but database confirmation failed. Please contact support with ID: ' + currentBookingId);
+            setLoading(false);
+          }
+        },
+        onFailure: (err: any) => {
+          console.error('Razorpay payment failed:', err);
+          setError(err.message || 'Payment transaction failed or cancelled.');
+          setLoading(false);
+        },
+      });
+
+    } catch (err: any) {
+      console.error('Booking creation failed:', err);
+      setError(err.message || 'Failed to create booking draft. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    // Reset state before closing
+    setStep(1);
+    setSelectedDomain(null);
+    setSelectedSlot(null);
+    setSelectedMode('video');
+    setIssue('');
+    setError('');
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <div className="booking-modal-overlay">
+      <div className="booking-modal-card animate-scaleIn">
+        
+        {/* Header */}
+        <div className="booking-modal-header">
+          <div>
+            <h2 className="heading-2 booking-modal-title">
+              {step === 4 ? 'Booking Confirmed!' : 'Book a Session'}
+            </h2>
+            {step < 4 && (
+              <p className="body-sm text-muted">
+                with <strong style={{ color: 'var(--clr-text)' }}>{mentorName}</strong>
+              </p>
+            )}
+          </div>
+          {step < 4 && (
+            <button onClick={handleClose} className="booking-modal-close-btn" aria-label="Close modal">
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Step Indicators */}
+        {step < 4 && (
+          <div className="booking-modal-steps">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="booking-modal-step-item">
+                <div className={`booking-modal-step-circle ${
+                  step === s 
+                    ? 'booking-modal-step-circle--active' 
+                    : step > s 
+                      ? 'booking-modal-step-circle--completed' 
+                      : ''
+                }`}>
+                  {s}
+                </div>
+                {s < 3 && (
+                  <div className={`booking-modal-step-line ${
+                    step > s ? 'booking-modal-step-line--completed' : ''
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Modal Content */}
+        <div className="booking-modal-body">
+          {error && <div className="booking-modal-error">{error}</div>}
+
+          {/* STEP 1: Domain & Mode Selection */}
+          {step === 1 && (
+            <div className="booking-modal-flow">
+              <div className="booking-modal-section">
+                <h4 className="booking-modal-section-title">1. Select Booking Topic</h4>
+                <div className="booking-domain-grid">
+                  {mappedDomains.length > 0 ? (
+                    mappedDomains.map((domain: any) => (
+                      <button
+                        key={domain.id}
+                        onClick={() => handleDomainSelect(domain)}
+                        type="button"
+                        className="booking-domain-card"
+                      >
+                        <span className="booking-domain-card__icon">{domain.icon}</span>
+                        <div className="booking-domain-card__info">
+                          <p className="booking-domain-card__name">{domain.label}</p>
+                          <p className="body-sm text-muted">{domain.description}</p>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="body-sm text-muted">No specific domains listed. General guidance session will be booked.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="booking-modal-section" style={{ marginTop: 'var(--sp-6)' }}>
+                <h4 className="booking-modal-section-title">2. Select Consultation Mode</h4>
+                <div className="booking-mode-list">
+                  {modes.map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setSelectedMode(mode.id)}
+                      type="button"
+                      className={`booking-mode-card ${
+                        selectedMode === mode.id ? 'booking-mode-card--active' : ''
+                      }`}
+                    >
+                      <div className="booking-mode-card__left">
+                        <mode.icon size={18} />
+                        <span className="booking-mode-card__name">{mode.name}</span>
+                      </div>
+                      <span className="booking-mode-card__price">
+                        <IndianRupee size={14} /> {mode.price}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="booking-modal-section" style={{ marginTop: 'var(--sp-6)' }}>
+                <label className="form-label" htmlFor="booking-issue">
+                  What would you like to discuss? (Optional)
+                </label>
+                <textarea
+                  id="booking-issue"
+                  className="form-input"
+                  rows={3}
+                  placeholder="Share a brief overview to help your mentor prepare..."
+                  value={issue}
+                  onChange={(e) => setIssue(e.target.value)}
+                  style={{ resize: 'none', background: 'var(--clr-bg)' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Time Slot Selection */}
+          {step === 2 && (
+            <div className="booking-modal-flow">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="booking-back-btn"
+              >
+                ← Back to Topic & Mode Selection
+              </button>
+              
+              <SlotSelection
+                guideId={mentorId}
+                guidePrice={activeModePrice}
+                onSlotSelect={handleSlotSelect}
+              />
+            </div>
+          )}
+
+          {/* STEP 3: Confirmation Summary & Checkout */}
+          {step === 3 && (
+            <div className="booking-modal-flow">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="booking-back-btn"
+              >
+                ← Back to Time Slots
+              </button>
+
+              <div className="booking-summary-box">
+                <div className="booking-summary-row">
+                  <span className="text-muted">Mentor</span>
+                  <span className="booking-summary-val">{mentorName}</span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="text-muted">Focus Topic</span>
+                  <span className="booking-summary-val">{selectedDomain?.label || 'General Life Guidance'}</span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="text-muted">Session Mode</span>
+                  <span className="booking-summary-val">
+                    {modes.find(m => m.id === selectedMode)?.name}
+                  </span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="text-muted">Scheduled Time</span>
+                  <span className="booking-summary-val">
+                    {selectedSlot?.date} at {selectedSlot?.time}
+                  </span>
+                </div>
+                <div className="booking-summary-row border-top">
+                  <span className="heading-3" style={{ fontWeight: 600 }}>Total Fee</span>
+                  <span className="booking-summary-total">
+                    <IndianRupee size={20} />
+                    {activeModePrice}
+                  </span>
+                </div>
+              </div>
+
+              <div className="booking-payment-note">
+                <p className="body-sm text-muted">
+                  🔒 Payments are secured by Razorpay. Your session is 100% confidential. You can reschedule up to 12 hours before the start.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Success Message */}
+          {step === 4 && (
+            <div className="booking-success-screen">
+              <div className="booking-success-icon">
+                <CheckCircle2 size={64} />
+              </div>
+              <h3 className="heading-1">You are all set!</h3>
+              <p className="body-lg text-muted">
+                Your session with <strong>{mentorName}</strong> is confirmed.
+              </p>
+
+              <div className="booking-success-card">
+                <p className="body-sm">
+                  📅 <strong>Time:</strong> {selectedSlot?.date} at {selectedSlot?.time}
+                </p>
+                <p className="body-sm" style={{ marginTop: 'var(--sp-2)' }}>
+                  🎯 <strong>Topic:</strong> {selectedDomain?.label || 'General Life Guidance'}
+                </p>
+                <p className="body-sm" style={{ marginTop: 'var(--sp-2)' }}>
+                  💬 <strong>Mode:</strong> {modes.find(m => m.id === selectedMode)?.name}
+                </p>
+                <p className="body-sm text-muted" style={{ marginTop: 'var(--sp-4)', fontSize: '0.8rem' }}>
+                  Booking ID: {bookingId}
+                </p>
+              </div>
+
+              <p className="body-sm text-muted" style={{ maxWidth: 400, textAlign: 'center', marginTop: 'var(--sp-4)' }}>
+                A calendar invitation with joining details has been sent to your email. You can view and manage this in your portal.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Actions */}
+        <div className="booking-modal-footer">
+          {step === 1 && (
+            <>
+              <button onClick={handleClose} className="btn btn-outline" style={{ flex: 1 }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => setStep(2)}
+                disabled={!selectedDomain}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Choose Slot
+              </button>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <button onClick={() => setStep(1)} className="btn btn-outline" style={{ flex: 1 }}>
+                Back
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                disabled={!selectedSlot}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Review Booking
+              </button>
+            </>
+          )}
+
+          {step === 3 && (
+            user ? (
+              <button
+                onClick={handlePayment}
+                disabled={loading}
+                className="btn btn-primary"
+                style={{ flex: 1, minWidth: 160 }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Pay Now <IndianRupee size={14} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="btn btn-primary"
+                style={{ flex: 1, minWidth: 160 }}
+              >
+                Sign In to Book
+              </Link>
+            )
+          )}
+
+          {step === 4 && (
+            <button
+              onClick={() => {
+                handleClose();
+                navigate('/sessions');
+              }}
+              className="btn btn-primary"
+              style={{ width: '100%' }}
+            >
+              Go to My Sessions
+            </button>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}

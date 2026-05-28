@@ -1,0 +1,199 @@
+/* ============================================
+   LifeFundies — Jitsi Video Room Component Styles
+   ============================================ */
+
+.video-room-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+  background-color: #0F172A; /* Premium dark slate background for video interface */
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--clr-border-strong);
+  padding: var(--sp-8);
+  gap: var(--sp-6);
+  color: #fff;
+  text-align: center;
+}
+
+.video-room-avatar-wrapper {
+  position: relative;
+}
+
+.video-room-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(20, 184, 166, 0.3);
+}
+
+.video-room-icon-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background-color: var(--clr-primary);
+  border: 3px solid #0F172A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.video-room-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: var(--sp-1);
+}
+
+.video-room-subtitle {
+  font-size: 0.9375rem;
+  color: var(--clr-text-subtle);
+}
+
+.video-room-pills {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.video-room-pill {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--clr-text-subtle);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  padding: var(--sp-1) var(--sp-3);
+}
+
+.video-room-join-btn {
+  margin-top: var(--sp-4);
+  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-light)) !important;
+  color: #fff !important;
+  box-shadow: var(--shadow-primary);
+}
+
+.video-room-join-btn:hover {
+  box-shadow: 0 0 32px rgba(20, 184, 166, 0.4);
+}
+
+.video-room-note {
+  font-size: 0.75rem;
+  color: var(--clr-text-subtle);
+  max-width: 300px;
+}
+
+/* ── Live IFrame View ── */
+.video-room-active {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background-color: #000;
+  border: 1px solid #1E293B;
+}
+
+.video-room-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: none;
+}
+
+.video-room-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #0F172A;
+  gap: var(--sp-4);
+}
+
+.video-room-loading-text {
+  font-size: 0.875rem;
+  color: var(--clr-text-subtle);
+}
+
+.video-room-leave-btn {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  z-index: 20;
+  background-color: var(--clr-accent-dark) !important;
+  color: #fff !important;
+}
+
+.video-room-leave-btn:hover {
+  background-color: #C24141 !important;
+}
+
+/* ── Video Modal Overlay ── */
+.video-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background-color: rgba(15, 23, 42, 0.85); /* Dark blur cover for video focus */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.video-modal-card {
+  width: 100%;
+  max-width: 900px;
+  background-color: #0F172A;
+  border: 1px solid #1E293B;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.4s var(--ease-spring);
+}
+
+.video-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-6);
+  background-color: #1E293B;
+  border-bottom: 1px solid #334155;
+}
+
+.video-modal-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.video-modal-close-btn {
+  color: var(--clr-text-subtle);
+  transition: color var(--duration-fast) var(--ease);
+}
+
+.video-modal-close-btn:hover {
+  color: #fff;
+}

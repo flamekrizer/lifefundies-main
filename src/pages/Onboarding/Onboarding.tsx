@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Check, ArrowRight, ArrowLeft, Shield, Eye, EyeOff } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { useAuthStore } from '../../stores'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import './Onboarding.css'
 
 const STEPS = ['Welcome', 'About You', 'Your Domains', 'Your Challenge', 'Preferences']
@@ -32,11 +34,24 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (user) {
-      setUser({ ...user, ...data, onboardingComplete: true })
+      const updatedUser = { ...user, ...data, onboardingComplete: true }
+      
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          ...data,
+          onboardingComplete: true
+        })
+        setUser(updatedUser)
+        navigate('/dashboard')
+      } catch (err) {
+        console.error('Failed to save onboarding data', err)
+        alert('Could not save your data. Please try again.')
+      }
+    } else {
+      navigate('/login')
     }
-    navigate('/dashboard')
   }
 
   const progress = ((step + 1) / STEPS.length) * 100

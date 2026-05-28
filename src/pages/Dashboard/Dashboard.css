@@ -171,8 +171,8 @@
 }
 
 .dashboard__widget--accent {
-  background: linear-gradient(135deg, rgba(255,107,107,0.08), rgba(247,183,49,0.05));
-  border-color: rgba(255,107,107,0.2);
+  background: linear-gradient(135deg, var(--clr-accent-glow), var(--clr-secondary-glow));
+  border-color: var(--clr-accent-glow);
 }
 
 .widget-accent__icon {
@@ -212,4 +212,44 @@
   .dashboard__stats { grid-template-columns: 1fr 1fr; }
   .session-card { flex-wrap: wrap; }
   .session-card__actions { width: 100%; justify-content: flex-end; }
+}
+
+/* Notifications dropdown */
+.dashboard__notifications-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  width: 320px;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dashboard__notifications-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.dashboard__notification-item {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--clr-border);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--clr-text);
+  text-align: left;
+  transition: background-color var(--duration-fast);
+}
+
+.dashboard__notification-item:last-child {
+  border-bottom: none;
+}
+
+.dashboard__notification-item--unread {
+  background-color: var(--clr-primary-glow);
+  font-weight: 500;
 }
