@@ -3,33 +3,22 @@ const { getFirestore, doc, setDoc } = require('firebase/firestore');
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from .env.local
-const envPath = path.join(__dirname, '../.env.local');
-if (!fs.existsSync(envPath)) {
-  console.error('❌ .env.local file not found!');
-  process.exit(1);
+// Load environment variables from a local .env (not committed) if present
+try {
+  require('dotenv').config({ path: path.join(__dirname, '../.env') });
+} catch (e) {
+  // dotenv is optional — fall back to process.env
 }
 
-const envContent = fs.readFileSync(envPath, 'utf8');
-const env = {};
-envContent.split('\n').forEach(line => {
-  const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
-  if (match) {
-    let value = match[2].trim();
-    if (value.startsWith('"') && value.endsWith('"')) {
-      value = value.substring(1, value.length - 1);
-    }
-    env[match[1]] = value;
-  }
-});
+const env = process.env;
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID
+  apiKey: env.VITE_FIREBASE_API_KEY || env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: env.VITE_FIREBASE_APP_ID || env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
