@@ -81,7 +81,14 @@ export default function OnboardingPage() {
           {step === 0 && <WelcomeStep name={user?.displayName || 'there'} />}
           {step === 1 && <AboutStep data={data} update={update} />}
           {step === 2 && <DomainsStep selected={data.domains} toggle={toggleDomain} />}
-          {step === 3 && <ChallengeStep value={data.challenge} onChange={v => update('challenge', v)} />}
+          {step === 3 && (
+            <ChallengeStep 
+              value={data.challenge} 
+              onChange={v => update('challenge', v)} 
+              isAnonymous={data.isAnonymous}
+              onAnonymousChange={v => update('isAnonymous', v)}
+            />
+          )}
           {step === 4 && <PrefsStep data={data} update={update} />}
 
           <div className="onboarding__nav">
@@ -195,8 +202,17 @@ function DomainsStep({ selected, toggle }: { selected: DomainId[]; toggle: (id: 
   )
 }
 
-function ChallengeStep({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [anonymous, setAnonymous] = useState(false)
+function ChallengeStep({ 
+  value, 
+  onChange, 
+  isAnonymous, 
+  onAnonymousChange 
+}: { 
+  value: string; 
+  onChange: (v: string) => void; 
+  isAnonymous: boolean; 
+  onAnonymousChange: (v: boolean) => void 
+}) {
   return (
     <div className="ob-step animate-fadeInUp">
       <div className="ob-step__icon">💬</div>
@@ -217,16 +233,16 @@ function ChallengeStep({ value, onChange }: { value: string; onChange: (v: strin
       <div className="ob-anon-toggle">
         <button
           type="button"
-          className={`ob-toggle ${anonymous ? 'ob-toggle--on' : ''}`}
-          onClick={() => setAnonymous(!anonymous)}
+          className={`ob-toggle ${isAnonymous ? 'ob-toggle--on' : ''}`}
+          onClick={() => onAnonymousChange(!isAnonymous)}
           id="anon-toggle"
-          aria-pressed={anonymous}
+          aria-pressed={isAnonymous}
         >
           <div className="ob-toggle__thumb" />
         </button>
         <div>
           <div className="flex gap-2">
-            {anonymous ? <EyeOff size={14} style={{ color: 'var(--clr-primary-light)' }} /> : <Eye size={14} />}
+            {isAnonymous ? <EyeOff size={14} style={{ color: 'var(--clr-primary-light)' }} /> : <Eye size={14} />}
             <span className="body-sm font-medium">Share anonymously</span>
           </div>
           <p className="body-sm text-muted">Your name won't be shown to the mentor until you're ready</p>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MessageSquare, TrendingUp, Filter, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import { getInitials } from '../../utils'
+import { useAuthStore } from '../../stores'
 import './Community.css'
 
 const MOCK_POSTS = [
@@ -211,61 +212,92 @@ export default function CommunityPage() {
       </div>
 
       {/* New Post Modal */}
-      {showNewPost && <NewPostModal onClose={() => setShowNewPost(false)} />}
+      {showNewPost && (
+        <NewPostModal 
+          onClose={() => setShowNewPost(false)} 
+          onSubmit={(newPost) => setPosts(prev => [newPost, ...prev])} 
+        />
+      )}
     </div>
   )
 }
 
-function NewPostModal({ onClose }: { onClose: () => void }) {
+function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (post: any) => void }) {
+  const { user } = useAuthStore()
   const [form, setForm] = useState({ title: '', content: '', domain: '', isAnonymous: false })
   const update = (field: string, value: unknown) => setForm(f => ({ ...f, [field]: value }))
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.title.trim() || !form.content.trim() || !form.domain) {
+      alert('Please fill out all fields.')
+      return
+    }
+
+    onSubmit({
+      id: `p-${Date.now()}`,
+      authorName: form.isAnonymous ? 'Anonymous' : (user?.displayName || 'User'),
+      isAnonymous: form.isAnonymous,
+      domain: form.domain,
+      title: form.title,
+      content: form.content,
+      upvotes: 0,
+      commentCount: 0,
+      tags: [form.domain],
+      createdAt: new Date(),
+      hasUpvoted: false
+    })
+    onClose()
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="New post">
       <div className="modal animate-scaleIn" onClick={e => e.stopPropagation()}>
-        <div className="modal__header">
-          <h2 className="heading-2">Create a Post</h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close modal"><X size={18} /></button>
-        </div>
-        <div className="modal__body">
-          <div className="form-group">
-            <label className="form-label">Title</label>
-            <input className="form-input" placeholder="What's on your mind?" value={form.title} onChange={e => update('title', e.target.value)} id="new-post-title" />
+        <form onSubmit={handleSubmit}>
+          <div className="modal__header">
+            <h2 className="heading-2">Create a Post</h2>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close modal"><X size={18} /></button>
           </div>
-          <div className="form-group">
-            <label className="form-label">Your story</label>
-            <textarea className="form-input" rows={5} placeholder="Share your experience, question or insight..." value={form.content} onChange={e => update('content', e.target.value)} id="new-post-content" style={{ resize: 'vertical' }} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Life Domain</label>
-            <select className="form-input" value={form.domain} onChange={e => update('domain', e.target.value)} id="new-post-domain">
-              <option value="">Select a domain</option>
-              {LIFE_DOMAINS.map(d => <option key={d.id} value={d.id}>{d.icon} {d.label}</option>)}
-            </select>
-          </div>
-          <div className="ob-anon-toggle">
-            <button
-              type="button"
-              className={`ob-toggle ${form.isAnonymous ? 'ob-toggle--on' : ''}`}
-              onClick={() => update('isAnonymous', !form.isAnonymous)}
-              id="post-anon-toggle"
-              aria-pressed={form.isAnonymous}
-            >
-              <div className="ob-toggle__thumb" />
-            </button>
-            <div>
-              <div className="flex gap-2">
-                {form.isAnonymous ? <EyeOff size={14} /> : <Eye size={14} />}
-                <span className="body-sm">Post anonymously</span>
+          <div className="modal__body">
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-post-title">Title</label>
+              <input className="form-input" placeholder="What's on your mind?" value={form.title} onChange={e => update('title', e.target.value)} id="new-post-title" required />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-post-content">Your story</label>
+              <textarea className="form-input" rows={5} placeholder="Share your experience, question or insight..." value={form.content} onChange={e => update('content', e.target.value)} id="new-post-content" style={{ resize: 'vertical' }} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-post-domain">Life Domain</label>
+              <select className="form-input" value={form.domain} onChange={e => update('domain', e.target.value)} id="new-post-domain" required>
+                <option value="">Select a domain</option>
+                {LIFE_DOMAINS.map(d => <option key={d.id} value={d.id}>{d.icon} {d.label}</option>)}
+              </select>
+            </div>
+            <div className="ob-anon-toggle">
+              <button
+                type="button"
+                className={`ob-toggle ${form.isAnonymous ? 'ob-toggle--on' : ''}`}
+                onClick={() => update('isAnonymous', !form.isAnonymous)}
+                id="post-anon-toggle"
+                aria-pressed={form.isAnonymous}
+              >
+                <div className="ob-toggle__thumb" />
+              </button>
+              <div>
+                <div className="flex gap-2">
+                  {form.isAnonymous ? <EyeOff size={14} /> : <Eye size={14} />}
+                  <span className="body-sm">Post anonymously</span>
+                </div>
+                <p className="body-sm text-muted">Your name won't be displayed</p>
               </div>
-              <p className="body-sm text-muted">Your name won't be displayed</p>
             </div>
           </div>
-        </div>
-        <div className="modal__footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" id="submit-post">Post to Community</button>
-        </div>
+          <div className="modal__footer">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" id="submit-post">Post to Community</button>
+          </div>
+        </form>
       </div>
     </div>
   )

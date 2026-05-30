@@ -5,6 +5,8 @@ import { getInitials, MOCK_MENTORS } from '../../utils'
 import { useAuthStore } from '../../stores'
 // @ts-ignore
 import { getUserBookings } from '../../lib/bookingService'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import VideoRoom from '../../components/VideoRoom'
 import './Sessions.css'
 
@@ -27,6 +29,32 @@ export default function SessionsPage() {
   const [sessionMentorName, setSessionMentorName] = useState('Priya Sharma')
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(false)
+
+  const handleRateSession = async (bookingId: string, ratingValue: number) => {
+    setRatings(prev => ({ ...prev, [bookingId]: ratingValue }))
+    
+    // Update local bookings state
+    setBookings(prev => prev.map(b => {
+      const currentId = b.id || b.bookingId
+      if (currentId === bookingId) {
+        return { ...b, rating: ratingValue }
+      }
+      return b
+    }))
+
+    if (bookingId.startsWith('ps')) {
+      console.log('Skipping Firestore rating sync for mock past session')
+      return
+    }
+
+    try {
+      const bookingRef = doc(db, 'bookings', bookingId)
+      await updateDoc(bookingRef, { rating: ratingValue })
+      console.log(`Successfully persisted rating ${ratingValue} for booking ${bookingId}`)
+    } catch (err) {
+      console.error('Failed to sync rating with Firestore:', err)
+    }
+  }
 
   useEffect(() => {
     if (user?.uid) {
@@ -197,7 +225,7 @@ export default function SessionsPage() {
                             <button
                               key={i}
                               className={`star-btn ${(ratings[session.id] || 0) > i ? 'star-btn--active' : ''}`}
-                              onClick={() => setRatings(r => ({ ...r, [session.id]: i + 1 }))}
+                              onClick={() => handleRateSession(session.id, i + 1)}
                               aria-label={`Rate ${i + 1} stars`}
                             >★</button>
                           ))}

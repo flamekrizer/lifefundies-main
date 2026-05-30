@@ -253,7 +253,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--clr-border);
 }
 
@@ -261,7 +261,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 320px;
+  width: 380px;
   background: var(--clr-bg-card);
   border: 1px solid var(--clr-border-strong);
   border-radius: var(--radius-xl);
@@ -275,15 +275,15 @@
 }
 
 .navbar__notifications-list {
-  max-height: 250px;
+  max-height: 350px;
   overflow-y: auto;
 }
 
 .navbar__notification-item {
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--clr-border);
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  font-size: 0.875rem;
+  line-height: 1.5;
   color: var(--clr-text);
   text-align: left;
   transition: background-color var(--duration-fast);
@@ -301,4 +301,19 @@
 
 .navbar__notification-item:hover {
   background-color: var(--clr-bg-alt);
+}
+
+@media (max-width: 480px) {
+  .navbar__notifications-dropdown {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: calc(var(--nav-h) + 8px);
+    width: auto;
+    max-height: 400px;
+    transform-origin: top center;
+  }
+  .navbar__notifications-list {
+    max-height: 300px;
+  }
 }

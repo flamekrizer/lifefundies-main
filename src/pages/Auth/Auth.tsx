@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import type { User as UserType } from '../../types'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../../lib/firebase'
 import './Auth.css'
@@ -16,6 +16,61 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const { setUser } = useAuthStore()
   const navigate = useNavigate()
+
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const provider = new GoogleAuthProvider()
+      const userCredential = await signInWithPopup(auth, provider)
+      const firebaseUser = userCredential.user
+      
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      let userData = userDoc.exists() ? userDoc.data() : null
+      
+      let loggedInUser: UserType
+      
+      if (!userData) {
+        const newUser: UserType = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || 'Google User',
+          email: firebaseUser.email || '',
+          phone: firebaseUser.phoneNumber || '',
+          role: 'user',
+          domains: [],
+          isAnonymous: false,
+          onboardingComplete: false,
+          createdAt: new Date(),
+        }
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
+        loggedInUser = newUser
+      } else {
+        loggedInUser = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || userData.displayName || 'Google User',
+          email: firebaseUser.email || userData.email || '',
+          phone: userData.phone || firebaseUser.phoneNumber || '',
+          role: userData.role || 'user',
+          domains: userData.domains || [],
+          isAnonymous: userData.isAnonymous || false,
+          onboardingComplete: userData.onboardingComplete || false,
+          createdAt: userData.createdAt?.toDate() || new Date(),
+        }
+      }
+      
+      setUser(loggedInUser)
+      if (loggedInUser.onboardingComplete) {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Google sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +121,7 @@ export function LoginPage() {
         </div>
 
         <div className="auth-social">
-          <button className="auth-social-btn" id="google-login" type="button">
+          <button className="auth-social-btn" id="google-login" type="button" onClick={handleGoogleLogin} disabled={loading}>
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" />
             Continue with Google
           </button>
@@ -141,6 +196,60 @@ export function RegisterPage() {
   const navigate = useNavigate()
 
   const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
+
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    try {
+      const provider = new GoogleAuthProvider()
+      const userCredential = await signInWithPopup(auth, provider)
+      const firebaseUser = userCredential.user
+      
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      let userData = userDoc.exists() ? userDoc.data() : null
+      
+      let loggedInUser: UserType
+      
+      if (!userData) {
+        const newUser: UserType = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || 'Google User',
+          email: firebaseUser.email || '',
+          phone: firebaseUser.phoneNumber || '',
+          role: form.role, // Use selected role
+          domains: [],
+          isAnonymous: false,
+          onboardingComplete: false,
+          createdAt: new Date(),
+        }
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
+        loggedInUser = newUser
+      } else {
+        loggedInUser = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || userData.displayName || 'Google User',
+          email: firebaseUser.email || userData.email || '',
+          phone: userData.phone || firebaseUser.phoneNumber || '',
+          role: userData.role || 'user',
+          domains: userData.domains || [],
+          isAnonymous: userData.isAnonymous || false,
+          onboardingComplete: userData.onboardingComplete || false,
+          createdAt: userData.createdAt?.toDate() || new Date(),
+        }
+      }
+      
+      setUser(loggedInUser)
+      if (loggedInUser.onboardingComplete) {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || 'Google sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -217,7 +326,7 @@ export function RegisterPage() {
         </div>
 
         <div className="auth-social">
-          <button className="auth-social-btn" id="google-register" type="button">
+          <button className="auth-social-btn" id="google-register" type="button" onClick={handleGoogleLogin} disabled={loading}>
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" />
             Continue with Google
           </button>

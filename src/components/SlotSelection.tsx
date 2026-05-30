@@ -38,7 +38,31 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
           .toISOString()
           .split('T')[0];
         
-        const availableSlots: Slot[] = await getGuideSlots(guideId, today, nextWeek);
+        let availableSlots: Slot[] = await getGuideSlots(guideId, today, nextWeek);
+        
+        if (!availableSlots || availableSlots.length === 0) {
+          console.log('No slots found in database, generating mock fallback slots.');
+          const fallbackSlots: Slot[] = [];
+          const times = ['10:00 AM', '02:00 PM', '04:00 PM'];
+          
+          for (let i = 1; i <= 3; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            const dateString = d.toISOString().split('T')[0];
+            
+            times.forEach((time, index) => {
+              fallbackSlots.push({
+                id: `mock-slot-${dateString}-${index}`,
+                date: dateString,
+                time: time,
+                duration: 60,
+                price: guidePrice,
+                isBooked: false
+              });
+            });
+          }
+          availableSlots = fallbackSlots;
+        }
         
         // Group by date
         const groupedSlots: Record<string, Slot[]> = {};
