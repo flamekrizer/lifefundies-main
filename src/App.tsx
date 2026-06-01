@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
@@ -14,10 +15,13 @@ import AdminPage from './pages/Admin/Admin'
 import { useAuthStore } from './stores'
 import AuthModal from './components/AuthModal'
 import FAQPage from './pages/FAQ/FAQ'
+import { onAuthStateChange } from './lib/authService'
 
 // Protected route wrapper
 function ProtectedRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: string }) {
-  const { user } = useAuthStore()
+  const { user, loading } = useAuthStore()
+  
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>Loading...</div>
   if (!user) return <Navigate to="/login" replace />
   if (requireRole && user.role !== requireRole && user.role !== 'admin') return <Navigate to="/dashboard" replace />
   return <>{children}</>
@@ -45,6 +49,18 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { setUser, setLoading } = useAuthStore()
+
+  useEffect(() => {
+    // Set up auth state listener
+    const unsubscribe = onAuthStateChange((user) => {
+      setUser(user)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [setUser, setLoading])
+
   return (
     <BrowserRouter>
       <AuthModal />

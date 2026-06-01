@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react'
-import { useAuthStore, useAppStore } from '../../stores'
+import { useAppStore, useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
+import { logout as firebaseLogout } from '../../lib/authService'
 import './Navbar.css'
 
 const NAV_LINKS = [
@@ -36,9 +37,14 @@ export default function Navbar() {
     setShowNotifications(false)
   }, [location])
 
-  const handleLogout = () => {
-    logout()
-    navigate('/')
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout()
+      useAuthStore.getState().logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
   }
 
   return (

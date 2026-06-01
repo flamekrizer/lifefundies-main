@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield, X } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield, X, Loader } from 'lucide-react'
 import { useAuthStore } from '../stores'
 import type { User as UserType } from '../types'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '../lib/authService'
 import '../pages/Auth/Auth.css'
 
 export default function AuthModal() {
@@ -27,47 +25,13 @@ export default function AuthModal() {
     setLoading(true)
     setError('')
     try {
-      const provider = new GoogleAuthProvider()
-      const userCredential = await signInWithPopup(auth, provider)
-      const firebaseUser = userCredential.user
-      
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      let userData = userDoc.exists() ? userDoc.data() : null
-      
-      let loggedInUser: UserType
-      
-      if (!userData) {
-        const newUser: UserType = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || 'Google User',
-          email: firebaseUser.email || '',
-          phone: firebaseUser.phoneNumber || '',
-          role: role,
-          domains: [],
-          isAnonymous: false,
-          onboardingComplete: false,
-          createdAt: new Date(),
-        }
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-        loggedInUser = newUser
-      } else {
-        loggedInUser = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || userData.displayName || 'Google User',
-          email: firebaseUser.email || userData.email || '',
-          phone: userData.phone || firebaseUser.phoneNumber || '',
-          role: userData.role || role,
-          domains: userData.domains || [],
-          isAnonymous: userData.isAnonymous || false,
-          onboardingComplete: userData.onboardingComplete || false,
-          createdAt: userData.createdAt?.toDate() || new Date(),
-        }
-      }
-      
+      const loggedInUser = await signInWithGoogle()
       setUser(loggedInUser)
       setAuthModalOpen(false)
       if (!loggedInUser.onboardingComplete) {
         navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
       }
     } catch (err: any) {
       console.error(err)
@@ -82,52 +46,20 @@ export default function AuthModal() {
     setLoading(true)
     setError('')
     try {
+      let loggedInUser: UserType
+      
       if (isLogin) {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password)
-        const firebaseUser = userCredential.user
-        
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        const userData = userDoc.exists() ? userDoc.data() : {}
-        
-        const loggedInUser: UserType = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || 'User',
-          email: firebaseUser.email || email,
-          role: userData.role || 'user',
-          domains: userData.domains || [],
-          isAnonymous: false,
-          onboardingComplete: userData.onboardingComplete || false,
-          createdAt: userData.createdAt?.toDate() || new Date(),
-        }
-        
-        setUser(loggedInUser)
-        setAuthModalOpen(false)
-        if (!loggedInUser.onboardingComplete) {
-          navigate('/onboarding')
-        }
+        loggedInUser = await signInWithEmail(email, password)
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-        const firebaseUser = userCredential.user
-        
-        await updateProfile(firebaseUser, { displayName: name })
-        
-        const newUser: UserType = {
-          uid: firebaseUser.uid,
-          displayName: name,
-          email: email,
-          phone: phone,
-          role: role,
-          domains: [],
-          isAnonymous: false,
-          onboardingComplete: false,
-          createdAt: new Date(),
-        }
-        
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-        
-        setUser(newUser)
-        setAuthModalOpen(false)
+        loggedInUser = await signUpWithEmail(email, password, name, role)
+      }
+      
+      setUser(loggedInUser)
+      setAuthModalOpen(false)
+      if (!loggedInUser.onboardingComplete) {
         navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
       }
     } catch (err: any) {
       console.error(err)

@@ -1,59 +1,60 @@
-import { useState } from 'react'
-import { MessageSquare, TrendingUp, Filter, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X, Loader } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
+import { addComment, createPost, getComments, getPosts, upvoteComment, upvotePost } from '../../lib/communityService'
+import type { Comment, Post } from '../../types'
 import './Community.css'
 
-const MOCK_POSTS = [
-  {
-    id: 'p1', authorName: 'Anonymous', isAnonymous: true, domain: 'career',
-    title: 'Confused between MBA and job offer — need real perspectives',
-    content: 'I just got a 6LPA offer from a decent startup but also got into a Tier-2 MBA. My parents want me to go for MBA but I feel like hands-on experience matters more at 23. What would you do?',
-    upvotes: 47, commentCount: 23, tags: ['career', 'decision'], createdAt: new Date(Date.now() - 2 * 3600000),
-    hasUpvoted: false,
-  },
-  {
-    id: 'p2', authorName: 'Shreya A.', isAnonymous: false, domain: 'emotional',
-    title: 'How I stopped my anxiety spiral — what actually worked for me',
-    content: 'Sharing this because I wish someone had told me this earlier. After trying various things for 2 years, here\'s what genuinely helped me manage daily anxiety as a student...',
-    upvotes: 89, commentCount: 41, tags: ['anxiety', 'mental-health', 'tips'], createdAt: new Date(Date.now() - 5 * 3600000),
-    hasUpvoted: true,
-  },
-  {
-    id: 'p3', authorName: 'Vikram N.', isAnonymous: false, domain: 'relationships',
-    title: 'Long-distance relationship with a toxic dynamic — hard truth needed',
-    content: 'Been 2 years of LDR. We fight every week but can\'t imagine my life without her. My friends say leave but she says I\'m the problem. I genuinely don\'t know what\'s right anymore.',
-    upvotes: 34, commentCount: 67, tags: ['relationships', 'ldr'], createdAt: new Date(Date.now() - 8 * 3600000),
-    hasUpvoted: false,
-  },
-  {
-    id: 'p4', authorName: 'Anonymous', isAnonymous: true, domain: 'confidence',
-    title: 'I froze during my first ever client presentation — how to bounce back?',
-    content: 'Complete blank. 12 people in the room. I just stood there for 30 seconds. My manager covered for me but I\'ve been replaying it in my head for 3 days. How do I get past this?',
-    upvotes: 62, commentCount: 38, tags: ['confidence', 'professional'], createdAt: new Date(Date.now() - 12 * 3600000),
-    hasUpvoted: false,
-  },
-]
-
 export default function CommunityPage() {
-  const [posts, setPosts] = useState(MOCK_POSTS)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'trending' | 'recent' | 'my-posts'>('trending')
   const [selectedDomain, setSelectedDomain] = useState('')
   const [showNewPost, setShowNewPost] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [upvotedPosts, setUpvotedPosts] = useState<Set<string>>(new Set())
   const { user, setAuthModalOpen } = useAuthStore()
 
-  const toggleUpvote = (id: string) => {
+  useEffect(() => {
+    loadPosts()
+  }, [])
+
+  const loadPosts = async () => {
+    setLoading(true)
+    try {
+      const fetchedPosts = await getPosts(undefined, 'recent', 100)
+      setPosts(fetchedPosts)
+    } catch (error) {
+      console.error('Failed to load posts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleUpvote = async (postId: string) => {
     if (!user) {
       setAuthModalOpen(true)
       return
     }
-    setPosts(p => p.map(post =>
-      post.id === id
-        ? { ...post, upvotes: post.hasUpvoted ? post.upvotes - 1 : post.upvotes + 1, hasUpvoted: !post.hasUpvoted }
-        : post
-    ))
+    try {
+      await upvotePost(postId, user.uid)
+      setUpvotedPosts(prev => {
+        const updated = new Set(prev)
+        if (updated.has(postId)) {
+          updated.delete(postId)
+        } else {
+          updated.add(postId)
+        }
+        return updated
+      })
+      // Reload posts to get updated upvote counts
+      await loadPosts()
+    } catch (error) {
+      console.error('Failed to upvote:', error)
+    }
   }
 
   const filtered = posts.filter(p =>
@@ -61,8 +62,15 @@ export default function CommunityPage() {
     (!searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.content.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
+  const sortedPosts = [...filtered].sort((a, b) => {
+    if (activeTab === 'trending') return b.upvotes - a.upvotes
+    if (activeTab === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    if (activeTab === 'my-posts') return user ? (a.authorId === user.uid ? -1 : 1) : 1
+    return 0
+  }).filter(p => activeTab !== 'my-posts' || (user && p.authorId === user.uid))
+
   const timeAgo = (date: Date) => {
-    const h = Math.floor((Date.now() - date.getTime()) / 3600000)
+    const h = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
     if (h < 1) return 'Just now'
     if (h < 24) return `${h}h ago`
     return `${Math.floor(h / 24)}d ago`
@@ -127,68 +135,78 @@ export default function CommunityPage() {
 
               {/* Posts */}
               <div className="community__posts">
-                {filtered.map((post, i) => {
-                  const domain = LIFE_DOMAINS.find(d => d.id === post.domain)
-                  return (
-                    <div key={post.id} className={`post-card animate-fadeInUp delay-${((i % 3 + 1) * 100) as 100 | 200 | 300}`} id={`post-${post.id}`}>
-                      <div className="post-card__header">
-                        <div className="post-card__author">
-                          {post.isAnonymous ? (
-                            <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
-                              <EyeOff size={12} />
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <Loader size={24} className="animate-spin" style={{ margin: '0 auto' }} />
+                  </div>
+                ) : sortedPosts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--clr-text-muted)' }}>
+                    <p>No posts yet. Be the first to share!</p>
+                  </div>
+                ) : (
+                  sortedPosts.map((post, i) => {
+                    const domain = LIFE_DOMAINS.find(d => d.id === post.domain)
+                    return (
+                      <div key={post.id} className={`post-card animate-fadeInUp delay-${((i % 3 + 1) * 100) as 100 | 200 | 300}`} id={`post-${post.id}`}>
+                        <div className="post-card__header">
+                          <div className="post-card__author">
+                            {post.isAnonymous ? (
+                              <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
+                                <EyeOff size={12} />
+                              </div>
+                            ) : (
+                              <div className="avatar avatar-sm" style={{ background: `hsl(${i * 90}, 55%, 40%)` }}>
+                                {getInitials(post.authorName)}
+                              </div>
+                            )}
+                            <div>
+                              <p className="post-card__name body-sm">{post.authorName}</p>
+                              <p className="body-sm text-subtle">{timeAgo(post.createdAt)}</p>
                             </div>
-                          ) : (
-                            <div className="avatar avatar-sm" style={{ background: `hsl(${i * 90}, 55%, 40%)` }}>
-                              {getInitials(post.authorName)}
-                            </div>
-                          )}
-                          <div>
-                            <p className="post-card__name body-sm">{post.authorName}</p>
-                            <p className="body-sm text-subtle">{timeAgo(post.createdAt)}</p>
                           </div>
+                          {domain && (
+                            <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
+                              {domain.icon} {domain.label}
+                            </span>
+                          )}
                         </div>
-                        {domain && (
-                          <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
-                            {domain.icon} {domain.label}
-                          </span>
-                        )}
-                      </div>
 
-                      <h3 className="post-card__title">{post.title}</h3>
-                      <p className="post-card__content body-sm text-muted">{post.content}</p>
+                        <h3 className="post-card__title">{post.title}</h3>
+                        <p className="post-card__content body-sm text-muted">{post.content}</p>
 
-                      <div className="post-card__tags">
-                        {post.tags.map(tag => (
-                          <span key={tag} className="post-card__tag">#{tag}</span>
-                        ))}
-                      </div>
+                        <div className="post-card__tags">
+                          {post.tags.map(tag => (
+                            <span key={tag} className="post-card__tag">#{tag}</span>
+                          ))}
+                        </div>
 
-                      <div className="post-card__actions">
-                        <button
-                          className={`post-card__action ${post.hasUpvoted ? 'post-card__action--active' : ''}`}
-                          onClick={() => toggleUpvote(post.id)}
-                          id={`upvote-${post.id}`}
-                          aria-label={`Upvote: ${post.upvotes}`}
-                        >
-                          <ThumbsUp size={15} /> {post.upvotes}
-                        </button>
-                        <button
-                          className="post-card__action"
-                          id={`comment-${post.id}`}
-                          onClick={() => {
-                            if (!user) {
-                              setAuthModalOpen(true)
-                            } else {
-                              alert('Comments section coming soon!')
-                            }
-                          }}
-                        >
-                          <MessageCircle size={15} /> {post.commentCount} comments
-                        </button>
+                        <div className="post-card__actions">
+                          <button
+                            className={`post-card__action ${upvotedPosts.has(post.id) ? 'post-card__action--active' : ''}`}
+                            onClick={() => toggleUpvote(post.id)}
+                            id={`upvote-${post.id}`}
+                            aria-label={`Upvote: ${post.upvotes}`}
+                          >
+                            <ThumbsUp size={15} /> {post.upvotes}
+                          </button>
+                          <button
+                            className="post-card__action"
+                            id={`comment-${post.id}`}
+                            onClick={() => {
+                              if (!user) {
+                                setAuthModalOpen(true)
+                              } else {
+                                setSelectedPost(post)
+                              }
+                            }}
+                          >
+                            <MessageCircle size={15} /> {post.commentCount} comments
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })
+                )}
               </div>
             </div>
 
@@ -240,9 +258,161 @@ export default function CommunityPage() {
       {showNewPost && (
         <NewPostModal 
           onClose={() => setShowNewPost(false)} 
-          onSubmit={(newPost) => setPosts(prev => [newPost, ...prev])} 
+          onSubmit={(newPost) => {
+            setPosts(prev => [newPost, ...prev])
+            loadPosts()
+          }}
         />
       )}
+      {selectedPost && (
+        <CommentsModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          onChanged={() => loadPosts()}
+        />
+      )}
+    </div>
+  )
+}
+
+function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () => void; onChanged: () => void }) {
+  const { user, setAuthModalOpen } = useAuthStore()
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [content, setContent] = useState('')
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [upvotedComments, setUpvotedComments] = useState<Set<string>>(new Set())
+
+  const loadComments = async () => {
+    setLoading(true)
+    try {
+      setComments(await getComments(post.id))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadComments()
+  }, [post.id])
+
+  const submitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
+    if (!content.trim()) return
+
+    setSubmitting(true)
+    try {
+      const newComment = await addComment({
+        postId: post.id,
+        authorId: user.uid,
+        authorName: isAnonymous ? 'Anonymous' : user.displayName,
+        isAnonymous,
+        content: content.trim(),
+        upvotes: 0,
+      })
+      setComments(prev => [newComment, ...prev])
+      setContent('')
+      onChanged()
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+      alert('Failed to save comment. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const toggleCommentUpvote = async (commentId: string) => {
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
+    try {
+      const added = await upvoteComment(commentId, user.uid)
+      setUpvotedComments(prev => {
+        const updated = new Set(prev)
+        added ? updated.add(commentId) : updated.delete(commentId)
+        return updated
+      })
+      await loadComments()
+    } catch (error) {
+      console.error('Failed to upvote comment:', error)
+    }
+  }
+
+  const timeAgo = (date: Date) => {
+    const h = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
+    if (h < 1) return 'Just now'
+    if (h < 24) return `${h}h ago`
+    return `${Math.floor(h / 24)}d ago`
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Comments">
+      <div className="modal modal--comments animate-scaleIn" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <div>
+            <h2 className="heading-2">Comments</h2>
+            <p className="body-sm text-muted">{post.title}</p>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close comments"><X size={18} /></button>
+        </div>
+        <div className="modal__body">
+          <form className="comment-form" onSubmit={submitComment}>
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder="Write a thoughtful reply..."
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              required
+            />
+            <div className="comment-form__footer">
+              <label className="comment-form__anon">
+                <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} />
+                <span className="body-sm">Comment anonymously</span>
+              </label>
+              <button className="btn btn-primary btn-sm" type="submit" disabled={submitting}>
+                {submitting ? <Loader size={16} className="animate-spin" /> : 'Save Comment'}
+              </button>
+            </div>
+          </form>
+
+          <div className="comments-list">
+            {loading ? (
+              <Loader size={20} className="animate-spin" />
+            ) : comments.length === 0 ? (
+              <p className="body-sm text-muted">No comments yet. Start the conversation.</p>
+            ) : comments.map(comment => (
+              <article className="comment-item" key={comment.id}>
+                <div className="comment-item__header">
+                  <div className="post-card__author">
+                    <div className="avatar avatar-sm" style={{ background: comment.isAnonymous ? 'var(--clr-bg-alt)' : 'var(--clr-primary)', border: '1px solid var(--clr-border)' }}>
+                      {comment.isAnonymous ? <EyeOff size={12} /> : getInitials(comment.authorName)}
+                    </div>
+                    <div>
+                      <p className="post-card__name body-sm">{comment.authorName}</p>
+                      <p className="body-sm text-subtle">{timeAgo(comment.createdAt)}</p>
+                    </div>
+                  </div>
+                  <button
+                    className={`post-card__action ${upvotedComments.has(comment.id) ? 'post-card__action--active' : ''}`}
+                    onClick={() => toggleCommentUpvote(comment.id)}
+                    type="button"
+                  >
+                    <ThumbsUp size={14} /> {comment.upvotes}
+                  </button>
+                </div>
+                <p className="body-sm text-muted">{comment.content}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -250,29 +420,37 @@ export default function CommunityPage() {
 function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (post: any) => void }) {
   const { user } = useAuthStore()
   const [form, setForm] = useState({ title: '', content: '', domain: '', isAnonymous: false })
+  const [submitting, setSubmitting] = useState(false)
   const update = (field: string, value: unknown) => setForm(f => ({ ...f, [field]: value }))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.title.trim() || !form.content.trim() || !form.domain) {
+    if (!form.title.trim() || !form.content.trim() || !form.domain || !user) {
       alert('Please fill out all fields.')
       return
     }
 
-    onSubmit({
-      id: `p-${Date.now()}`,
-      authorName: form.isAnonymous ? 'Anonymous' : (user?.displayName || 'User'),
-      isAnonymous: form.isAnonymous,
-      domain: form.domain,
-      title: form.title,
-      content: form.content,
-      upvotes: 0,
-      commentCount: 0,
-      tags: [form.domain],
-      createdAt: new Date(),
-      hasUpvoted: false
-    })
-    onClose()
+    setSubmitting(true)
+    try {
+      const newPost = await createPost({
+        authorId: user.uid,
+        authorName: form.isAnonymous ? 'Anonymous' : user.displayName,
+        isAnonymous: form.isAnonymous,
+        domain: form.domain as any,
+        title: form.title,
+        content: form.content,
+        upvotes: 0,
+        commentCount: 0,
+        tags: [form.domain],
+      })
+      onSubmit(newPost)
+      onClose()
+    } catch (error) {
+      console.error('Failed to create post:', error)
+      alert('Failed to create post. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -319,8 +497,10 @@ function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p
             </div>
           </div>
           <div className="modal__footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" id="submit-post">Post to Community</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="submit" className="btn btn-primary" id="submit-post" disabled={submitting}>
+              {submitting ? <Loader size={16} className="animate-spin" /> : 'Post to Community'}
+            </button>
           </div>
         </form>
       </div>

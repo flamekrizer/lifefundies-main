@@ -5,6 +5,7 @@ import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
 import BookingModal from '../../components/BookingModal'
 import { useAuthStore } from '../../stores'
+import { addReview, getMentorReviews } from '../../lib/communityService'
 import './Mentors.css'
 
 export default function MentorsPage() {
@@ -18,6 +19,7 @@ export default function MentorsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [bookingMentor, setBookingMentor] = useState<any>(null)
+  const [reviewMentorId, setReviewMentorId] = useState<string | null>(null)
   const { user, setAuthModalOpen } = useAuthStore()
 
   useEffect(() => {
@@ -202,6 +204,13 @@ export default function MentorsPage() {
                       <div className="mentor-card-full__cta">
                         <p className="mentor-card-full__price">{formatCurrency(mentor.sessionPrice)}<span className="body-sm text-muted">/session</span></p>
                         <button
+                          onClick={() => setReviewMentorId(reviewMentorId === mentor.uid ? null : mentor.uid)}
+                          className="btn btn-outline"
+                          id={`reviews-${mentor.uid}`}
+                        >
+                          Reviews
+                        </button>
+                        <button
                           onClick={() => {
                             if (!user) {
                               setAuthModalOpen(true)
@@ -216,6 +225,9 @@ export default function MentorsPage() {
                         </button>
                       </div>
                     </div>
+                    {reviewMentorId === mentor.uid && (
+                      <MentorReviews mentor={mentor} />
+                    )}
                   </div>
                 </div>
               ))}
@@ -240,5 +252,109 @@ export default function MentorsPage() {
         />
       )}
     </div>
+  )
+}
+
+function MentorReviews({ mentor }: { mentor: any }) {
+  const { user, setAuthModalOpen } = useAuthStore()
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [rating, setRating] = useState(5)
+  const [text, setText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadReviews = async () => {
+    setLoading(true)
+    try {
+      setReviews(await getMentorReviews(mentor.uid))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadReviews()
+  }, [mentor.uid])
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
+    if (!text.trim()) return
+
+    setSubmitting(true)
+    try {
+      const review = await addReview(mentor.uid, user.uid, rating, text.trim())
+      setReviews(prev => [{ ...review, userName: user.displayName }, ...prev])
+      setText('')
+      setRating(5)
+    } catch (error) {
+      console.error('Failed to add review:', error)
+      alert('Failed to save review. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="mentor-reviews">
+      <form className="mentor-review-form" onSubmit={handleSubmit}>
+        <div className="mentor-review-form__row">
+          <label className="form-label" htmlFor={`review-rating-${mentor.uid}`}>Rating</label>
+          <select
+            id={`review-rating-${mentor.uid}`}
+            className="form-input mentor-review-form__rating"
+            value={rating}
+            onChange={event => setRating(Number(event.target.value))}
+          >
+            {[5, 4, 3, 2, 1].map(value => (
+              <option key={value} value={value}>{value} stars</option>
+            ))}
+          </select>
+        </div>
+        <textarea
+          className="form-input"
+          rows={3}
+          placeholder={`Share your experience with ${mentor.displayName}`}
+          value={text}
+          onChange={event => setText(event.target.value)}
+          required
+        />
+        <button className="btn btn-primary btn-sm" type="submit" disabled={submitting}>
+          {submitting ? 'Saving...' : 'Save Review'}
+        </button>
+      </form>
+
+      <div className="mentor-reviews__list">
+        {loading ? (
+          <p className="body-sm text-muted">Loading reviews...</p>
+        ) : reviews.length === 0 ? (
+          <p className="body-sm text-muted">No Firebase reviews yet.</p>
+        ) : reviews.map(review => (
+          <article className="mentor-review" key={review.id}>
+            <div className="mentor-review__header">
+              <span className="mentor-review__stars">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star
+                    key={index}
+                    size={14}
+                    style={{
+                      color: 'var(--clr-secondary)',
+                      fill: index < review.rating ? 'var(--clr-secondary)' : 'transparent',
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="body-sm text-subtle">
+                {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : 'Recently'}
+              </span>
+            </div>
+            <p className="body-sm text-muted">{review.text}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
