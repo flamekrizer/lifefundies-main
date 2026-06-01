@@ -35,6 +35,7 @@ export default function Footer() {
               <Link to="/#pricing" className="footer__link">Pricing</Link>
               <Link to="/#how-it-works" className="footer__link">How It Works</Link>
               <Link to="/faq" className="footer__link">FAQs</Link>
+              <Link to="/contact" className="footer__link">Contact Us</Link>
             </nav>
           </div>
 
@@ -54,14 +55,14 @@ export default function Footer() {
           <div className="footer__col">
             <h4 className="footer__heading">Contact</h4>
             <div className="footer__contact">
-              <a href="mailto:hello@lifefundies.com" className="footer__contact-item">
-                <Mail size={16} /> hello@lifefundies.com
+              <a href="mailto:support@lifefundies.in" className="footer__contact-item">
+                <Mail size={16} /> support@lifefundies.in
               </a>
-              <a href="tel:+911234567890" className="footer__contact-item">
-                <Phone size={16} /> +91 12345 67890
+              <a href="tel:+917055984498" className="footer__contact-item">
+                <Phone size={16} /> +91-7055984498
               </a>
               <div className="footer__contact-item">
-                <MapPin size={16} /> Noida, Uttar Pradesh, India
+                <MapPin size={16} /> Online Services
               </div>
             </div>
             <div className="footer__legal">

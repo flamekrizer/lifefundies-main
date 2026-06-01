@@ -74,7 +74,7 @@ export const signInWithEmail = async (email: string, password: string) => {
 }
 
 // ── Google Auth ──────────────────────────────────────
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (role: 'user' | 'mentor' = 'user') => {
   try {
     const provider = new GoogleAuthProvider()
     const userCredential = await signInWithPopup(auth, provider)
@@ -88,7 +88,8 @@ export const signInWithGoogle = async () => {
         uid: firebaseUser.uid,
         displayName: firebaseUser.displayName || 'Google User',
         email: firebaseUser.email || '',
-        role: 'user',
+        phone: firebaseUser.phoneNumber || '',
+        role,
         domains: [],
         isAnonymous: false,
         onboardingComplete: false,
@@ -107,7 +108,8 @@ export const signInWithGoogle = async () => {
         uid: firebaseUser.uid,
         displayName: firebaseUser.displayName || userData.displayName || 'Google User',
         email: firebaseUser.email || userData.email || '',
-        role: userData.role || 'user',
+        phone: userData.phone || firebaseUser.phoneNumber || '',
+        role: userData.role || role,
         domains: userData.domains || [],
         isAnonymous: userData.isAnonymous || false,
         onboardingComplete: userData.onboardingComplete || false,

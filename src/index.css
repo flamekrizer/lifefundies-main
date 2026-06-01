@@ -471,13 +471,13 @@ ul, ol { list-style: none; }
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .hide-mobile { display: none !important; }
 }
 
 @media (max-width: 768px) {
   .container { padding: 0 var(--sp-4); }
   .section { padding: var(--sp-12) 0; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-  .hide-mobile { display: none !important; }
 }
 
 @media (max-width: 480px) {

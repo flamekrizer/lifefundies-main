@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: '18 Domains', href: '/#domains' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'FAQs', href: '/faq' },
+  { label: 'Contact Us', href: '/contact' },
 ]
 
 export default function Navbar() {
@@ -166,18 +167,55 @@ export default function Navbar() {
       {menuOpen && (
         <div className="navbar__mobile-menu">
           {NAV_LINKS.map(link => (
-            <Link key={link.href} to={link.href} className="navbar__mobile-link">{link.label}</Link>
+            <Link 
+              key={link.href} 
+              to={link.href} 
+              className="navbar__mobile-link"
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </Link>
           ))}
           <div className="navbar__mobile-actions">
             {user ? (
               <>
-                <Link to="/dashboard" className="btn btn-outline" style={{ flex: 1 }}>Dashboard</Link>
-                <button className="btn btn-ghost" onClick={handleLogout} style={{ flex: 1 }}>Sign Out</button>
+                <Link 
+                  to="/dashboard" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={() => {
+                    handleLogout()
+                    setMenuOpen(false)
+                  }} 
+                  style={{ flex: 1 }}
+                >
+                  Sign Out
+                </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="btn btn-outline" style={{ flex: 1 }}>Sign In</Link>
-                <Link to="/register" className="btn btn-primary" style={{ flex: 1 }}>Get Started</Link>
+                <Link 
+                  to="/login" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  to="/register" 
+                  className="btn btn-primary" 
+                  style={{ flex: 1 }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Get Started
+                </Link>
               </>
             )}
           </div>

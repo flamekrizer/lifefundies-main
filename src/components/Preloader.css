@@ -1,0 +1,80 @@
+/* ============================================
+   LifeFundies — Premium Preloader Styles
+   ============================================ */
+
+.preloader-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--clr-bg);
+  font-family: var(--font-body);
+}
+
+.preloader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: preloader-fadeIn var(--duration-slow) var(--ease);
+}
+
+.preloader-logo-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: var(--sp-6);
+  animation: preloader-float 3s ease-in-out infinite;
+}
+
+.preloader-emoji {
+  font-size: 2.5rem;
+}
+
+.preloader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--clr-border-strong);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: preloader-spin 1s linear infinite;
+  margin-bottom: var(--sp-4);
+}
+
+.preloader-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin-bottom: var(--sp-1);
+  letter-spacing: -0.01em;
+}
+
+.preloader-subtitle {
+  font-size: 0.875rem;
+  color: var(--clr-text-muted);
+}
+
+/* Animations */
+@keyframes preloader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes preloader-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes preloader-fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

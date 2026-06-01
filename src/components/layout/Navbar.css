@@ -243,7 +243,7 @@
   border-top: 1px solid var(--clr-border);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .navbar__mobile-toggle { display: flex; }
   .navbar { position: fixed; }
 }

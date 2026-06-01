@@ -4,9 +4,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import type { User as UserType } from '../../types'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../../lib/firebase'
+import { signInWithGoogle } from '../../lib/authService'
 import './Auth.css'
 
 export function LoginPage() {
@@ -22,46 +23,7 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const provider = new GoogleAuthProvider()
-      const userCredential = await signInWithPopup(auth, provider)
-      const firebaseUser = userCredential.user
-      
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      let userData = userDoc.exists() ? userDoc.data() : null
-      
-      let loggedInUser: UserType
-      
-      if (!userData) {
-        const lfId = generateLFID(firebaseUser.uid)
-        const newUser: UserType = {
-          uid: firebaseUser.uid,
-          lfId,
-          displayName: firebaseUser.displayName || 'Google User',
-          email: firebaseUser.email || '',
-          phone: firebaseUser.phoneNumber || '',
-          role: 'user',
-          domains: [],
-          isAnonymous: false,
-          onboardingComplete: false,
-          createdAt: new Date(),
-        }
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-        loggedInUser = newUser
-      } else {
-        loggedInUser = {
-          uid: firebaseUser.uid,
-          lfId: userData.lfId || '',
-          displayName: firebaseUser.displayName || userData.displayName || 'Google User',
-          email: firebaseUser.email || userData.email || '',
-          phone: userData.phone || firebaseUser.phoneNumber || '',
-          role: userData.role || 'user',
-          domains: userData.domains || [],
-          isAnonymous: userData.isAnonymous || false,
-          onboardingComplete: userData.onboardingComplete || false,
-          createdAt: userData.createdAt?.toDate() || new Date(),
-        }
-      }
-      
+      const loggedInUser = await signInWithGoogle()
       setUser(loggedInUser)
       if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -205,6 +167,7 @@ export function RegisterPage() {
   const handleGoogleLogin = async () => {
     setLoading(true)
     try {
+<<<<<<< HEAD
       const provider = new GoogleAuthProvider()
       const userCredential = await signInWithPopup(auth, provider)
       const firebaseUser = userCredential.user
@@ -246,6 +209,9 @@ export function RegisterPage() {
         }
       }
       
+=======
+      const loggedInUser = await signInWithGoogle(form.role)
+>>>>>>> b783231 (Commit local updates)
       setUser(loggedInUser)
       if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')

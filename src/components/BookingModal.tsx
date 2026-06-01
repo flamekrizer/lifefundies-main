@@ -28,6 +28,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
   const [error, setError] = useState('');
   const [bookingId, setBookingId] = useState('');
 
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
 
   if (!isOpen || !guide) return null;
 
@@ -150,6 +153,8 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
     setIssue('');
     setError('');
     setLoading(false);
+    setAgreedToTerms(false);
+    setShowTermsModal(false);
     onClose();
   };
 
@@ -337,6 +342,18 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   🔒 Payments are secured by Razorpay. Your session is 100% confidential. You can reschedule up to 12 hours before the start.
                 </p>
               </div>
+
+              <div className="booking-terms-checkbox">
+                <input
+                  type="checkbox"
+                  id="booking-terms-check"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+                <label htmlFor="booking-terms-check">
+                  I have read and agree to the website <button type="button" onClick={() => setShowTermsModal(true)} className="booking-terms-link">terms and conditions *</button>
+                </label>
+              </div>
             </div>
           )}
 
@@ -411,7 +428,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
             user ? (
               <button
                 onClick={handlePayment}
-                disabled={loading}
+                disabled={loading || !agreedToTerms}
                 className="btn btn-primary"
                 style={{ flex: 1, minWidth: 160 }}
               >
@@ -453,6 +470,92 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
         </div>
 
       </div>
+
+      {/* Terms Overlay Modal */}
+      {showTermsModal && (
+        <div className="booking-terms-overlay">
+          <div className="booking-terms-card animate-scaleIn">
+            <div className="booking-terms-header">
+              <h3 className="heading-3">Terms & Conditions</h3>
+              <button type="button" onClick={() => setShowTermsModal(false)} className="booking-terms-close" aria-label="Close terms">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="booking-terms-body">
+              <h4 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: 'var(--sp-2)' }}>LifeFundies – Terms & Conditions</h4>
+              <p className="terms-date" style={{ fontSize: '0.8125rem', color: 'var(--clr-text-muted)', marginBottom: 'var(--sp-4)' }}>Last Updated: August 2025</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>Welcome to LifeFundies (“we”, “us”, “our”). By accessing or using our platform, you agree to these Terms & Conditions, which govern all sessions, conversations, communications, and services offered through LifeFundies.</p>
+              
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>1. Acceptance of Terms</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>By booking or participating in a LifeFundies session, you confirm that:</p>
+              <ul style={{ listStyleType: 'disc', paddingLeft: 'var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>You are 13 years or older.</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>You have read and understood the terms mentioned here.</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>You agree to follow our session guidelines, data policy, and refund conditions.</li>
+              </ul>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>2. Nature of Service – Judgment-Free Guidance</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>LifeFundies is not a therapy or medical counseling service. Instead, we are India’s first life-readiness and clarity platform, designed for people seeking:</p>
+              <ul style={{ listStyleType: 'disc', paddingLeft: 'var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Emotional clarity</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Career guidance</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Non-clinical life support conversations</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Personal development chats</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Peer mentoring with privacy and empathy</li>
+              </ul>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>We provide a safe, non-judgmental space for structured guidance — not treatment, therapy, or diagnosis.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>3. Peer-Based Guide Model</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>LifeFundies operates on a peer-guide framework. Here’s how it works:</p>
+              <ul style={{ listStyleType: 'disc', paddingLeft: 'var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>All guides are in your age group or just a step ahead (e.g., college seniors, recent graduates, working professionals, trained mentees).</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>Every guide is personally trained under LifeFundies parameters, including: active listening, session privacy protocols, emotional neutrality, and structured response framework.</li>
+                <li style={{ marginBottom: 'var(--sp-1)' }}>No guide offers medical, psychiatric, or therapeutic advice.</li>
+              </ul>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>4. Session Access & Payment</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Sessions can only be booked via Tally Form and confirmed after payment via Cashfree.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>LF-ID (your anonymous identity) is generated only post-payment verification.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>First-time users may access a subsidized trial (if mentioned).</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>Repeat users falsely claiming “first session” to bypass payment may be banned for 3 months.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>5. Session Flow & Confidentiality</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>All sessions are held via WhatsApp, Zoom, or Chat, depending on user choice.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Your real name, number, or email is never revealed to the guide.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Guides receive only: LF-ID (semi-anonymous ID), Chosen topic (e.g., “Career Confusion”), and Session time slot.</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>LifeFundies will never sell or misuse your data.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>6. Refund Policy</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>No refunds are issued post-session.</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>If technical errors or accidental payments occur, you may contact support@lifefundies.in within 48 hours.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>7. Misuse & Bans</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Submitting false info, misusing free services, or trolling guides will result in a ban for up to 3 months.</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>We reserve the right to suspend users without notice in case of policy violation.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>8. Intellectual Property</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>All platform content, session formats, training materials, LF-ID systems, and brand names are property of LifeFundies.</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>Do not copy, replicate, record, or screenshot without written permission.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>9. Disclaimer</h5>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>LifeFundies does not replace professional therapy or clinical help.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>For mental health emergencies, we recommend contacting certified professionals.</p>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>All guidance is offered as structured, non-expert peer conversations, not diagnosis.</p>
+
+              <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>10. Modifications to Terms</h5>
+              <p style={{ marginBottom: 'var(--sp-4)' }}>These Terms may be updated periodically. Continued use implies your acceptance of any new terms. Updates will be posted on lifefundies.in.</p>
+            </div>
+            <div className="booking-terms-footer">
+              <button type="button" onClick={() => {
+                setAgreedToTerms(true);
+                setShowTermsModal(false);
+              }} className="btn btn-primary" style={{ width: '100%' }}>
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

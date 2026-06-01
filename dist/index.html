@@ -10,10 +10,84 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-Y2MxuU65.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-fSjnaC4T.css">
+    <style>
+      /* Inline preloader styles for instantaneous render before bundle downloads */
+      #initial-preloader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #F8F5F0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      .init-preloader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .init-preloader-logo-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        background: #FFFFFF;
+        border: 1px solid #E6E1DA;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        margin-bottom: 1.5rem;
+        animation: init-float 3s ease-in-out infinite;
+      }
+      .init-preloader-emoji {
+        font-size: 2.5rem;
+      }
+      .init-preloader-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #DAD5CF;
+        border-top-color: #1A58CF;
+        border-radius: 50%;
+        animation: init-spin 1s linear infinite;
+        margin-bottom: 1rem;
+      }
+      .init-preloader-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1E293B;
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.01em;
+      }
+      .init-preloader-subtitle {
+        font-size: 0.875rem;
+        color: #64748B;
+      }
+      @keyframes init-spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes init-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-DQkH6BPf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-r6Vq_NaB.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-preloader">
+        <div class="init-preloader-content">
+          <div class="init-preloader-logo-wrap">
+            <span class="init-preloader-emoji">🌿</span>
+          </div>
+          <div class="init-preloader-spinner"></div>
+          <h3 class="init-preloader-title">LifeFundies</h3>
+          <p class="init-preloader-subtitle">Redesigning Life Fundamentals...</p>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

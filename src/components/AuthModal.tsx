@@ -25,7 +25,7 @@ export default function AuthModal() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithGoogle()
+      const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
       setAuthModalOpen(false)
       if (!loggedInUser.onboardingComplete) {

@@ -457,6 +457,113 @@
   margin-bottom: var(--sp-2);
 }
 
+/* ── Terms & Conditions Checkbox ── */
+.booking-terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding: 0 var(--sp-1);
+}
+
+.booking-terms-checkbox input[type="checkbox"] {
+  margin-top: 0.25rem;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.booking-terms-checkbox label {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--clr-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.booking-terms-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--clr-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.booking-terms-link:hover {
+  color: var(--clr-primary-light);
+}
+
+/* ── Terms Overlay Modal ── */
+.booking-terms-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background-color: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.booking-terms-card {
+  position: relative;
+  width: 100%;
+  max-width: 550px;
+  background-color: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  outline: none;
+  overflow: hidden;
+}
+
+.booking-terms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.booking-terms-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  color: var(--clr-text-muted);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.booking-terms-close:hover {
+  background-color: var(--clr-bg-alt);
+  color: var(--clr-text);
+}
+
+.booking-terms-body {
+  padding: var(--sp-5);
+  overflow-y: auto;
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--clr-text);
+}
+
+.booking-terms-footer {
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--clr-border);
+}
+
 /* ── Success Screen ── */
 .booking-success-screen {
   display: flex;

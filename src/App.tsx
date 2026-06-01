@@ -16,12 +16,15 @@ import { useAuthStore } from './stores'
 import AuthModal from './components/AuthModal'
 import FAQPage from './pages/FAQ/FAQ'
 import { onAuthStateChange } from './lib/authService'
+import Preloader from './components/Preloader'
+import ContactPage from './pages/Contact/Contact'
+import ScrollToHash from './components/layout/ScrollToHash'
 
 // Protected route wrapper
 function ProtectedRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: string }) {
   const { user, loading } = useAuthStore()
   
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>Loading...</div>
+  if (loading) return <Preloader />
   if (!user) return <Navigate to="/login" replace />
   if (requireRole && user.role !== requireRole && user.role !== 'admin') return <Navigate to="/dashboard" replace />
   return <>{children}</>
@@ -49,7 +52,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { setUser, setLoading } = useAuthStore()
+  const { setUser, setLoading, loading } = useAuthStore()
 
   useEffect(() => {
     // Set up auth state listener
@@ -61,8 +64,13 @@ export default function App() {
     return () => unsubscribe()
   }, [setUser, setLoading])
 
+  if (loading) {
+    return <Preloader />
+  }
+
   return (
     <BrowserRouter>
+      <ScrollToHash />
       <AuthModal />
       <Routes>
         {/* Public */}
@@ -71,6 +79,7 @@ export default function App() {
         <Route path="/mentors/:id" element={<PublicLayout><MentorsPage /></PublicLayout>} />
         <Route path="/community" element={<PublicLayout><CommunityPage /></PublicLayout>} />
         <Route path="/faq" element={<PublicLayout><FAQPage /></PublicLayout>} />
+        <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
