@@ -42,8 +42,13 @@ export default function CommunityPage() {
   const [selectedDomain, setSelectedDomain] = useState('')
   const [showNewPost, setShowNewPost] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const { user, setAuthModalOpen } = useAuthStore()
 
   const toggleUpvote = (id: string) => {
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
     setPosts(p => p.map(post =>
       post.id === id
         ? { ...post, upvotes: post.hasUpvoted ? post.upvotes - 1 : post.upvotes + 1, hasUpvoted: !post.hasUpvoted }
@@ -75,7 +80,17 @@ export default function CommunityPage() {
                   <h1 className="display-2">Community <span className="text-gradient">Forum</span></h1>
                   <p className="text-muted">A safe space to share, learn, and connect with peers on the same journey.</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowNewPost(true)} id="new-post-btn">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (!user) {
+                      setAuthModalOpen(true)
+                    } else {
+                      setShowNewPost(true)
+                    }
+                  }}
+                  id="new-post-btn"
+                >
                   <Plus size={16} /> New Post
                 </button>
               </div>
@@ -157,7 +172,17 @@ export default function CommunityPage() {
                         >
                           <ThumbsUp size={15} /> {post.upvotes}
                         </button>
-                        <button className="post-card__action" id={`comment-${post.id}`}>
+                        <button
+                          className="post-card__action"
+                          id={`comment-${post.id}`}
+                          onClick={() => {
+                            if (!user) {
+                              setAuthModalOpen(true)
+                            } else {
+                              alert('Comments section coming soon!')
+                            }
+                          }}
+                        >
                           <MessageCircle size={15} /> {post.commentCount} comments
                         </button>
                       </div>

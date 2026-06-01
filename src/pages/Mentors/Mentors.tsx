@@ -4,6 +4,7 @@ import { Search, Filter, Star, Users, CheckCircle, X } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
 import BookingModal from '../../components/BookingModal'
+import { useAuthStore } from '../../stores'
 import './Mentors.css'
 
 export default function MentorsPage() {
@@ -17,17 +18,23 @@ export default function MentorsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [bookingMentor, setBookingMentor] = useState<any>(null)
+  const { user, setAuthModalOpen } = useAuthStore()
 
   useEffect(() => {
     if (id) {
-      const mentor = MOCK_MENTORS.find(m => m.uid === id)
-      if (mentor) {
-        setBookingMentor(mentor)
+      if (!user) {
+        setAuthModalOpen(true)
+        navigate('/mentors', { replace: true })
+      } else {
+        const mentor = MOCK_MENTORS.find(m => m.uid === id)
+        if (mentor) {
+          setBookingMentor(mentor)
+        }
       }
     } else {
       setBookingMentor(null)
     }
-  }, [id])
+  }, [id, user])
 
   const filtered = MOCK_MENTORS.filter(m => {
     const matchSearch = !search || m.displayName.toLowerCase().includes(search.toLowerCase()) ||
@@ -194,9 +201,19 @@ export default function MentorsPage() {
                       </div>
                       <div className="mentor-card-full__cta">
                         <p className="mentor-card-full__price">{formatCurrency(mentor.sessionPrice)}<span className="body-sm text-muted">/session</span></p>
-                        <Link to={`/mentors/${mentor.uid}`} className="btn btn-primary" id={`book-${mentor.uid}`}>
+                        <button
+                          onClick={() => {
+                            if (!user) {
+                              setAuthModalOpen(true)
+                            } else {
+                              navigate(`/mentors/${mentor.uid}`)
+                            }
+                          }}
+                          className="btn btn-primary"
+                          id={`book-${mentor.uid}`}
+                        >
                           Book Session
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   </div>

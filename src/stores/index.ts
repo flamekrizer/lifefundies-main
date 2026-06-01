@@ -5,16 +5,20 @@ import type { User, Mentor, Session, Post } from '../types'
 interface AuthState {
   user: User | null
   loading: boolean
+  authModalOpen: boolean
   setUser: (user: User | null) => void
   setLoading: (loading: boolean) => void
+  setAuthModalOpen: (open: boolean) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
+  authModalOpen: false,
   setUser: (user) => set({ user }),
   setLoading: (loading) => set({ loading }),
+  setAuthModalOpen: (authModalOpen) => set({ authModalOpen }),
   logout: () => set({ user: null }),
 }))
 

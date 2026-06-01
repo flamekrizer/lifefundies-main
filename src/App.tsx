@@ -12,6 +12,7 @@ import SettingsPage from './pages/Settings/Settings'
 import MentorPortalPage from './pages/MentorPortal/MentorPortal'
 import AdminPage from './pages/Admin/Admin'
 import { useAuthStore } from './stores'
+import AuthModal from './components/AuthModal'
 
 // Protected route wrapper
 function ProtectedRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: string }) {
@@ -45,6 +46,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthModal />
       <Routes>
         {/* Public */}
         <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />

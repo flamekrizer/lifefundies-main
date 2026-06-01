@@ -17,7 +17,7 @@ interface BookingModalProps {
 }
 
 export default function BookingModal({ guide, isOpen, onClose, onSuccess }: BookingModalProps) {
-  const { user } = useAuthStore();
+  const { user, setAuthModalOpen } = useAuthStore();
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Domain & Mode, 2: Slot, 3: Confirm, 4: Success
   const [selectedDomain, setSelectedDomain] = useState<any>(null);
@@ -425,13 +425,14 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                 )}
               </button>
             ) : (
-              <Link
-                to="/login"
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
                 className="btn btn-primary"
                 style={{ flex: 1, minWidth: 160 }}
               >
                 Sign In to Book
-              </Link>
+              </button>
             )
           )}
 

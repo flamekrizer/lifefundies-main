@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Shield, Star, Users, Play, CheckCircle, Zap, Heart, Target } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import { MOCK_MENTORS, MOCK_TESTIMONIALS, formatCurrency, getInitials } from '../../utils'
+import { useAuthStore } from '../../stores'
 import './Landing.css'
 
 export default function LandingPage() {
@@ -20,6 +21,7 @@ export default function LandingPage() {
 }
 
 function HeroSection() {
+  const { user, setAuthModalOpen } = useAuthStore()
   return (
     <section className="hero" id="home">
       {/* Background orbs */}
@@ -44,9 +46,20 @@ function HeroSection() {
           </p>
 
           <div className="hero__cta-group">
-            <Link to="/register" className="btn btn-primary btn-xl animate-pulse-glow" id="hero-cta-primary">
-              Start Your Journey <ArrowRight size={20} />
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="btn btn-primary btn-xl animate-pulse-glow" id="hero-cta-primary">
+                Go to Dashboard <ArrowRight size={20} />
+              </Link>
+            ) : (
+              <button 
+                type="button"
+                onClick={() => setAuthModalOpen(true)} 
+                className="btn btn-primary btn-xl animate-pulse-glow" 
+                id="hero-cta-primary"
+              >
+                Start Your Journey <ArrowRight size={20} />
+              </button>
+            )}
             <Link to="/#how-it-works" className="btn btn-outline btn-xl" id="hero-cta-secondary">
               <Play size={18} /> How It Works
             </Link>
@@ -102,7 +115,18 @@ function HeroSection() {
                   <Heart size={14} style={{ color: 'var(--clr-accent)' }} /> 127 reviews
                 </div>
               </div>
-              <Link to="/register" className="btn btn-primary" style={{ width: '100%' }}>Book Session • ₹349</Link>
+              {user ? (
+                <Link to="/mentors/m1" className="btn btn-primary" style={{ width: '100%' }}>Book Session • ₹349</Link>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={() => setAuthModalOpen(true)} 
+                  className="btn btn-primary" 
+                  style={{ width: '100%' }}
+                >
+                  Book Session • ₹349
+                </button>
+              )}
             </div>
 
             <div className="hero__floating-badge hero__floating-badge--1">
@@ -324,6 +348,7 @@ function TestimonialsSection() {
 }
 
 function PricingSection() {
+  const { user, setAuthModalOpen } = useAuthStore()
   const plans = [
     {
       name: 'Starter',
@@ -410,9 +435,20 @@ function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <Link to="/register" className={`btn btn-xl ${plan.highlight ? 'btn-primary' : 'btn-outline'}`} style={{ width: '100%' }}>
-                {plan.cta}
-              </Link>
+              {user ? (
+                <Link to="/mentors" className={`btn btn-xl ${plan.highlight ? 'btn-primary' : 'btn-outline'}`} style={{ width: '100%' }}>
+                  {plan.cta}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAuthModalOpen(true)}
+                  className={`btn btn-xl ${plan.highlight ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ width: '100%' }}
+                >
+                  {plan.cta}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -425,6 +461,7 @@ function PricingSection() {
 }
 
 function CTASection() {
+  const { user, setAuthModalOpen } = useAuthStore()
   return (
     <section className="cta-section" id="cta">
       <div className="cta-section__bg" />
@@ -437,9 +474,20 @@ function CTASection() {
             Join thousands of students and professionals who have already found their direction. Your first step towards a more fulfilling life starts here.
           </p>
           <div className="cta-section__actions">
-            <Link to="/register" className="btn btn-accent btn-xl" id="final-cta">
-              Start for Free <ArrowRight size={20} />
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="btn btn-accent btn-xl" id="final-cta">
+                Go to Dashboard <ArrowRight size={20} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="btn btn-accent btn-xl"
+                id="final-cta"
+              >
+                Start for Free <ArrowRight size={20} />
+              </button>
+            )}
             <Link to="/mentors" className="btn btn-outline btn-xl" id="browse-mentors-cta">
               Browse Mentors
             </Link>
