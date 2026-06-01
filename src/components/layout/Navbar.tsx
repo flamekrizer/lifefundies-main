@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: 'Community', href: '/community' },
   { label: '18 Domains', href: '/#domains' },
   { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'FAQs', href: '/faq' },
 ]
 
 export default function Navbar() {

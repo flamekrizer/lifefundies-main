@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Heart, Instagram, Twitter, Linkedin, Mail, Phone, MapPin } from 'lucide-react'
+import { Heart, Instagram, Twitter, Linkedin, Youtube, Mail, Phone, MapPin } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import './Footer.css'
 
@@ -17,9 +17,10 @@ export default function Footer() {
               India's most trusted holistic life-guidance platform. Empowering individuals across 18 life domains with clarity, confidence, and direction.
             </p>
             <div className="footer__social">
-              <a href="https://instagram.com" className="footer__social-link" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram size={18} /></a>
-              <a href="https://twitter.com" className="footer__social-link" aria-label="Twitter" target="_blank" rel="noopener noreferrer"><Twitter size={18} /></a>
-              <a href="https://linkedin.com" className="footer__social-link" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><Linkedin size={18} /></a>
+              <a href="https://www.instagram.com/lifefundies/" className="footer__social-link" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram size={18} /></a>
+              <a href="https://x.com/lifefundies" className="footer__social-link" aria-label="Twitter/X" target="_blank" rel="noopener noreferrer"><Twitter size={18} /></a>
+              <a href="https://www.linkedin.com/company/lifefundies/" className="footer__social-link" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><Linkedin size={18} /></a>
+              <a href="https://www.youtube.com/@LifeFundies" className="footer__social-link" aria-label="YouTube" target="_blank" rel="noopener noreferrer"><Youtube size={18} /></a>
               <a href="mailto:hello@lifefundies.com" className="footer__social-link" aria-label="Email"><Mail size={18} /></a>
             </div>
           </div>
@@ -33,6 +34,7 @@ export default function Footer() {
               <Link to="/register" className="footer__link">Become a Mentor</Link>
               <Link to="/#pricing" className="footer__link">Pricing</Link>
               <Link to="/#how-it-works" className="footer__link">How It Works</Link>
+              <Link to="/faq" className="footer__link">FAQs</Link>
             </nav>
           </div>
 

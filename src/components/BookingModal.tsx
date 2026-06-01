@@ -28,6 +28,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
   const [error, setError] = useState('');
   const [bookingId, setBookingId] = useState('');
 
+
   if (!isOpen || !guide) return null;
 
   // Adapt guide properties dynamically to support both Firestore schema and Mock schema
@@ -51,6 +52,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
   ];
 
   const activeModePrice = modes.find(m => m.id === selectedMode)?.price || mentorPrice;
+
 
   const handleDomainSelect = (domain: any) => {
     setSelectedDomain(domain);

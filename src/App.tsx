@@ -13,6 +13,7 @@ import MentorPortalPage from './pages/MentorPortal/MentorPortal'
 import AdminPage from './pages/Admin/Admin'
 import { useAuthStore } from './stores'
 import AuthModal from './components/AuthModal'
+import FAQPage from './pages/FAQ/FAQ'
 
 // Protected route wrapper
 function ProtectedRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: string }) {
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/mentors" element={<PublicLayout><MentorsPage /></PublicLayout>} />
         <Route path="/mentors/:id" element={<PublicLayout><MentorsPage /></PublicLayout>} />
         <Route path="/community" element={<PublicLayout><CommunityPage /></PublicLayout>} />
+        <Route path="/faq" element={<PublicLayout><FAQPage /></PublicLayout>} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
