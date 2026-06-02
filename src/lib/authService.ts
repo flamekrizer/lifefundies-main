@@ -14,7 +14,7 @@ import { auth, db } from './firebase'
 import type { User as UserType } from '../types'
 
 // ── Email/Password Auth ──────────────────────────────────────
-export const signUpWithEmail = async (email: string, password: string, displayName: string, role: 'user' | 'mentor' = 'user') => {
+export const signUpWithEmail = async (email: string, password: string, displayName: string, phone: string = '', role: 'user' | 'mentor' = 'user') => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
@@ -25,6 +25,7 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
       uid: firebaseUser.uid,
       displayName,
       email,
+      phone,
       role,
       domains: [],
       isAnonymous: false,
@@ -44,26 +45,49 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
   }
 }
 
-export const signInWithEmail = async (email: string, password: string) => {
+export const signInWithEmail = async (email: string, password: string, selectedRole?: 'user' | 'mentor') => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
 
     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+    let userData: any
+
     if (!userDoc.exists()) {
-      throw new Error('User profile not found')
+      const newUser: UserType = {
+        uid: firebaseUser.uid,
+        displayName: firebaseUser.displayName || 'User',
+        email: firebaseUser.email || email,
+        phone: firebaseUser.phoneNumber || '',
+        role: selectedRole || 'user',
+        domains: [],
+        isAnonymous: false,
+        onboardingComplete: false,
+        createdAt: new Date(),
+      }
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        ...newUser,
+        createdAt: Timestamp.now(),
+      })
+      userData = newUser
+    } else {
+      userData = userDoc.data()
+      if (selectedRole && selectedRole !== userData.role) {
+        await setDoc(doc(db, 'users', firebaseUser.uid), { role: selectedRole }, { merge: true })
+        userData.role = selectedRole
+      }
     }
 
-    const userData = userDoc.data()
     const loggedInUser: UserType = {
       uid: firebaseUser.uid,
       displayName: firebaseUser.displayName || userData.displayName || 'User',
       email: firebaseUser.email || email,
+      phone: userData.phone || firebaseUser.phoneNumber || '',
       role: userData.role || 'user',
       domains: userData.domains || [],
-      isAnonymous: false,
+      isAnonymous: userData.isAnonymous || false,
       onboardingComplete: userData.onboardingComplete || false,
-      createdAt: userData.createdAt?.toDate() || new Date(),
+      createdAt: userData.createdAt?.toDate?.() || userData.createdAt || new Date(),
     }
 
     return loggedInUser
@@ -104,6 +128,10 @@ export const signInWithGoogle = async (role: 'user' | 'mentor' = 'user') => {
       loggedInUser = newUser
     } else {
       const userData = userDoc.data()
+      if (role === 'mentor' && userData.role !== 'mentor') {
+        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'mentor' }, { merge: true })
+        userData.role = 'mentor'
+      }
       loggedInUser = {
         uid: firebaseUser.uid,
         displayName: firebaseUser.displayName || userData.displayName || 'Google User',
@@ -193,38 +221,41 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
     if (firebaseUser) {
       try {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        if (userDoc.exists()) {
-          const userData = userDoc.data()
-          const user: UserType = {
+        let userData: any
+
+        if (!userDoc.exists()) {
+          const newUser: UserType = {
             uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName || userData.displayName || 'User',
-            email: firebaseUser.email || userData.email || '',
-            role: userData.role || 'user',
-            domains: userData.domains || [],
-            isAnonymous: userData.isAnonymous || false,
-            onboardingComplete: userData.onboardingComplete || false,
-            createdAt: userData.createdAt?.toDate() || new Date(),
-          }
-          callback(user)
-        } else if (firebaseUser.isAnonymous) {
-          const anonymousUser: UserType = {
-            uid: firebaseUser.uid,
-            displayName: 'Anonymous User',
-            email: '',
+            displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
+            email: firebaseUser.email || '',
+            phone: firebaseUser.phoneNumber || '',
             role: 'user',
             domains: [],
-            isAnonymous: true,
+            isAnonymous: firebaseUser.isAnonymous,
             onboardingComplete: false,
             createdAt: new Date(),
           }
           await setDoc(doc(db, 'users', firebaseUser.uid), {
-            ...anonymousUser,
+            ...newUser,
             createdAt: Timestamp.now(),
           })
-          callback(anonymousUser)
+          userData = newUser
         } else {
-          callback(null)
+          userData = userDoc.data()
         }
+
+        const user: UserType = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || userData.displayName || 'User',
+          email: firebaseUser.email || userData.email || '',
+          phone: userData.phone || firebaseUser.phoneNumber || '',
+          role: userData.role || 'user',
+          domains: userData.domains || [],
+          isAnonymous: userData.isAnonymous || false,
+          onboardingComplete: userData.onboardingComplete || false,
+          createdAt: userData.createdAt?.toDate?.() || userData.createdAt || new Date(),
+        }
+        callback(user)
       } catch (error) {
         console.error('Error fetching user data:', error)
         callback(null)

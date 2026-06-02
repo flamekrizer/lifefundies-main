@@ -12,10 +12,12 @@ import SessionsPage from './pages/Sessions/Sessions'
 import SettingsPage from './pages/Settings/Settings'
 import MentorPortalPage from './pages/MentorPortal/MentorPortal'
 import AdminPage from './pages/Admin/Admin'
-import { useAuthStore } from './stores'
+import { useAuthStore, useAppStore } from './stores'
 import AuthModal from './components/AuthModal'
 import FAQPage from './pages/FAQ/FAQ'
 import { onAuthStateChange } from './lib/authService'
+// @ts-ignore
+import { listenToUserNotifications } from './lib/bookingService'
 import Preloader from './components/Preloader'
 import ContactPage from './pages/Contact/Contact'
 import ScrollToHash from './components/layout/ScrollToHash'
@@ -52,7 +54,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { setUser, setLoading, loading } = useAuthStore()
+  const { user, setUser, setLoading, loading } = useAuthStore()
+  const { setNotificationsList } = useAppStore()
 
   useEffect(() => {
     // Set up auth state listener
@@ -63,6 +66,31 @@ export default function App() {
 
     return () => unsubscribe()
   }, [setUser, setLoading])
+
+  useEffect(() => {
+    let unsubscribeNotifs: (() => void) | null = null
+
+    if (user?.uid) {
+      unsubscribeNotifs = listenToUserNotifications(user.uid, (data: any) => {
+        const formatted = data.map((n: any) => ({
+          id: n.id,
+          text: `${n.title || 'Notification'}${n.body ? `: ${n.body}` : ''}`,
+          isRead: n.read === true,
+          actionUrl: n.actionUrl || (user.role === 'mentor' ? '/mentor-portal' : '/dashboard'),
+          type: n.type || 'notification'
+        }))
+        setNotificationsList(formatted)
+      })
+    } else {
+      setNotificationsList([])
+    }
+
+    return () => {
+      if (unsubscribeNotifs) {
+        unsubscribeNotifs()
+      }
+    }
+  }, [user?.uid, user?.role, setNotificationsList])
 
   if (loading) {
     return <Preloader />

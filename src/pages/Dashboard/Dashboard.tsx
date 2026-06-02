@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Calendar, Clock, Star, TrendingUp, Users, ArrowRight, Bell, BookOpen, Heart, X } from 'lucide-react'
 // @ts-ignore
-import { getUserBookings, listenToUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
+import { listenToUserBookings, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
 import { getUserPosts } from '../../lib/communityService'
 import { useAuthStore, useAppStore } from '../../stores'
 import { LIFE_DOMAINS } from '../../types'
@@ -16,6 +16,7 @@ const SessionSkeleton = () => (
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const userDomains = user?.domains?.map(id => LIFE_DOMAINS.find(d => d.id === id)).filter(Boolean) || []
   
   const [showNotifications, setShowNotifications] = useState(false)
@@ -27,52 +28,25 @@ export default function DashboardPage() {
 
   const { 
     notificationsList, 
-    setNotificationsList, 
     markAllNotificationsRead, 
     markNotificationRead 
   } = useAppStore()
 
-  // Real-time notifications listener
+
+
+  // Bookings listener
   useEffect(() => {
-    let unsubscribeNotifs: (() => void) | null = null
+    if (!user?.uid) return
 
-    if (user?.uid) {
-      unsubscribeNotifs = listenToUserNotifications(user.uid, (data: any) => {
-        const formatted = data.map((n: any) => ({
-          id: n.id,
-          text: `🔔 ${n.title}: ${n.body}`,
-          isRead: n.read
-        }))
-        setNotificationsList(formatted)
-      })
-    } else {
-      setNotificationsList([])
-    }
-
-    return () => {
-      if (unsubscribeNotifs) {
-        unsubscribeNotifs()
+    setLoadingBookings(true)
+    const unsubscribe = listenToUserBookings(user.uid, (data: any) => {
+      if (Array.isArray(data)) {
+        setBookings(data)
       }
-    }
-  }, [user?.uid])
+      setLoadingBookings(false)
+    })
 
-  // Bookings fetch
-  useEffect(() => {
-    if (user?.uid) {
-      setLoadingBookings(true)
-      getUserBookings(user.uid)
-        .then((data: any) => {
-          if (Array.isArray(data)) {
-            setBookings(data)
-          }
-        })
-        .catch((err: any) => {
-          console.error('Failed to load user bookings:', err)
-        })
-        .finally(() => {
-          setLoadingBookings(false)
-        })
-    }
+    return () => unsubscribe()
   }, [user?.uid])
 
   // Community posts count fetch
@@ -105,12 +79,15 @@ export default function DashboardPage() {
     }
   }
 
-  const handleMarkRead = async (id: string | number) => {
+  const handleMarkRead = async (id: string | number, actionUrl?: string) => {
     markNotificationRead(id)
     try {
       await markNotificationAsRead(String(id))
     } catch (err) {
       console.error(err)
+    }
+    if (actionUrl) {
+      navigate(actionUrl)
     }
   }
 
@@ -129,20 +106,6 @@ export default function DashboardPage() {
     return `${y}-${m}-${d}`;
   })();
 
-  const isNearSessionTime = (sessionDate: string, sessionTime: string, durationMinutes: number = 60) => {
-    try {
-      const [year, month, day] = sessionDate.split('-').map(Number);
-      const [hours, minutes] = sessionTime.split(':').map(Number);
-      const sessionStart = new Date(year, month - 1, day, hours, minutes);
-      const sessionEnd = new Date(sessionStart.getTime() + durationMinutes * 60 * 1000);
-      const now = new Date();
-      const fifteenMinsBefore = new Date(sessionStart.getTime() - 15 * 60 * 1000);
-      return now >= fifteenMinsBefore && now <= sessionEnd;
-    } catch (e) {
-      return false;
-    }
-  }
-
   // Filter bookings to upcoming sessions format: confirmed or pending, AND date >= current date
   const upcomingSessions = bookings
     .filter(b => {
@@ -154,6 +117,7 @@ export default function DashboardPage() {
       const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
+        sessionId: b.sessionId || null,
         mentor: mentor?.displayName || 'LifeFundies Mentor',
         domain: b.domain,
         date: b.sessionDate,
@@ -277,7 +241,7 @@ export default function DashboardPage() {
                         <div 
                           key={n.id} 
                           className={`dashboard__notification-item ${!n.isRead ? 'dashboard__notification-item--unread' : ''}`}
-                          onClick={() => handleMarkRead(n.id)}
+                          onClick={() => handleMarkRead(n.id, n.actionUrl)}
                           style={{ cursor: 'pointer' }}
                         >
                           {n.text}
@@ -335,7 +299,7 @@ export default function DashboardPage() {
                 ) : upcomingSessions.length > 0 ? (
                   <div className="flex-col gap-3">
                     {upcomingSessions.map(session => {
-                      const isJoinable = session.status === 'confirmed' && isNearSessionTime(session.date, session.time, session.duration);
+                      const isJoinable = session.status === 'confirmed' && !!session.sessionId;
                       return (
                         <div key={session.id} className="session-card" id={`session-${session.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
@@ -362,7 +326,7 @@ export default function DashboardPage() {
                             </span>
                             <button 
                               className="btn btn-outline btn-sm"
-                              onClick={() => handleJoinSession(session.mentor, session.id)}
+                              onClick={() => handleJoinSession(session.mentor, session.sessionId || session.id)}
                               disabled={!isJoinable}
                             >
                               Join

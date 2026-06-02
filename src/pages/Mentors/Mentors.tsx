@@ -6,7 +6,7 @@ import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
 import BookingModal from '../../components/BookingModal'
 import { useAuthStore } from '../../stores'
 import { addReview, getMentorReviews } from '../../lib/communityService'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import './Mentors.css'
 
@@ -23,6 +23,58 @@ export default function MentorsPage() {
   const [bookingMentor, setBookingMentor] = useState<any>(null)
   const [reviewMentorId, setReviewMentorId] = useState<string | null>(null)
   const { user, setAuthModalOpen, setUser } = useAuthStore()
+
+  const [mentors, setMentors] = useState<any[]>(MOCK_MENTORS)
+  const [loadingMentors, setLoadingMentors] = useState(false)
+
+  // Sync selected domain state with search parameter changes
+  useEffect(() => {
+    const domainParam = searchParams.get('domain') as DomainId | null
+    if (domainParam) {
+      setSelectedDomain(domainParam)
+    } else {
+      setSelectedDomain('')
+    }
+  }, [searchParams])
+
+  // Fetch mentors from Firestore users collection
+  useEffect(() => {
+    const fetchMentors = async () => {
+      setLoadingMentors(true)
+      try {
+        const usersRef = collection(db, 'users')
+        const q = query(usersRef, where('role', '==', 'mentor'))
+        const snapshot = await getDocs(q)
+        const dbMentors = snapshot.docs.map(doc => ({
+          uid: doc.id,
+          id: doc.id,
+          displayName: doc.data().displayName || 'Mentor',
+          email: doc.data().email || '',
+          photoURL: doc.data().photoURL || '',
+          bio: doc.data().bio || '',
+          domains: doc.data().domains || [],
+          expertise: doc.data().expertise || [],
+          sessionPrice: doc.data().sessionPrice || doc.data().price || 299,
+          rating: doc.data().rating || 5.0,
+          reviewCount: doc.data().reviewCount || 0,
+          totalSessions: doc.data().totalSessions || 0,
+          availability: doc.data().availability || {},
+          yearsOfExperience: doc.data().yearsOfExperience || doc.data().experience || 0,
+          education: doc.data().education || '',
+          languages: doc.data().languages || ['English', 'Hindi'],
+          isVerified: doc.data().isVerified !== undefined ? doc.data().isVerified : true,
+        }))
+        if (dbMentors.length > 0) {
+          setMentors(dbMentors)
+        }
+      } catch (err) {
+        console.error('Failed to fetch mentors from Firestore:', err)
+      } finally {
+        setLoadingMentors(false)
+      }
+    }
+    fetchMentors()
+  }, [])
 
   const handleToggleInterest = async (mentorId: string) => {
     if (!user) {
@@ -50,7 +102,7 @@ export default function MentorsPage() {
         setAuthModalOpen(true)
         navigate('/mentors', { replace: true })
       } else {
-        const mentor = MOCK_MENTORS.find(m => m.uid === id)
+        const mentor = mentors.find(m => m.uid === id)
         if (mentor) {
           setBookingMentor(mentor)
         }
@@ -58,16 +110,22 @@ export default function MentorsPage() {
     } else {
       setBookingMentor(null)
     }
-  }, [id, user])
+  }, [id, user, mentors])
 
-  const filtered = MOCK_MENTORS.filter(m => {
-    const matchSearch = !search || m.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      m.bio.toLowerCase().includes(search.toLowerCase()) || m.expertise.some(e => e.toLowerCase().includes(search.toLowerCase()))
-    const matchDomain = !selectedDomain || m.domains.includes(selectedDomain)
+  const filtered = mentors.filter(m => {
+    const displayName = m.displayName || ''
+    const bio = m.bio || ''
+    const expertise = m.expertise || []
+    const domains = m.domains || []
+    const sessionPrice = m.sessionPrice || m.price || 299
+
+    const matchSearch = !search || displayName.toLowerCase().includes(search.toLowerCase()) ||
+      bio.toLowerCase().includes(search.toLowerCase()) || expertise.some((e: string) => e.toLowerCase().includes(search.toLowerCase()))
+    const matchDomain = !selectedDomain || domains.includes(selectedDomain)
     const matchPrice = priceRange === 'all' ||
-      (priceRange === 'budget' && m.sessionPrice <= 299) ||
-      (priceRange === 'mid' && m.sessionPrice > 299 && m.sessionPrice <= 349) ||
-      (priceRange === 'premium' && m.sessionPrice > 349)
+      (priceRange === 'budget' && sessionPrice <= 299) ||
+      (priceRange === 'mid' && sessionPrice > 299 && sessionPrice <= 349) ||
+      (priceRange === 'premium' && sessionPrice > 349)
     return matchSearch && matchDomain && matchPrice
   })
 
@@ -82,7 +140,7 @@ export default function MentorsPage() {
               <p className="body-lg text-muted">Connect with verified experts across 18 life domains</p>
             </div>
             <div className="mentors-page__stats">
-              <span className="badge badge-primary">{MOCK_MENTORS.length} Mentors</span>
+              <span className="badge badge-primary">{mentors.length} Mentors</span>
               <span className="badge badge-secondary">All Verified</span>
             </div>
           </div>
@@ -204,7 +262,7 @@ export default function MentorsPage() {
                       <p className="body-sm text-muted">{mentor.bio}</p>
 
                       <div className="mentor-card-full__domains">
-                        {mentor.domains.map(d => {
+                        {mentor.domains.map((d: any) => {
                           const domain = LIFE_DOMAINS.find(x => x.id === d)
                           return domain ? (
                             <span key={d} className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
@@ -215,7 +273,7 @@ export default function MentorsPage() {
                       </div>
 
                       <div className="mentor-card-full__expertise">
-                        {mentor.expertise.map(e => (
+                        {mentor.expertise.map((e: any) => (
                           <span key={e} className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>{e}</span>
                         ))}
                       </div>
@@ -324,9 +382,9 @@ function MentorReviews({ mentor }: { mentor: any }) {
       setReviews(prev => [{ ...review, userName: user.displayName }, ...prev])
       setText('')
       setRating(5)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add review:', error)
-      alert('Failed to save review. Please try again.')
+      alert(error.message || 'Failed to save review. Please try again.')
     } finally {
       setSubmitting(false)
     }

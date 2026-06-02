@@ -27,6 +27,8 @@ export interface NotificationItem {
   id: number | string
   text: string
   isRead: boolean
+  actionUrl?: string
+  type?: string
 }
 
 interface AppState {

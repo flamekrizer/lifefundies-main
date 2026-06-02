@@ -48,6 +48,10 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
     })
     .filter(Boolean);
 
+  const remainingDomains = LIFE_DOMAINS.filter(
+    ld => !mappedDomains.some((md: any) => md.id === ld.id)
+  );
+
   const modes = [
     { id: 'video', name: 'Video Call', icon: Video, price: mentorPrice },
     { id: 'audio', name: 'Audio Call', icon: Phone, price: Math.round(mentorPrice * 0.8) },
@@ -215,23 +219,55 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               <div className="booking-modal-section">
                 <h4 className="booking-modal-section-title">1. Select Booking Topic</h4>
                 <div className="booking-domain-grid">
-                  {mappedDomains.length > 0 ? (
-                    mappedDomains.map((domain: any) => (
-                      <button
-                        key={domain.id}
-                        onClick={() => handleDomainSelect(domain)}
-                        type="button"
-                        className="booking-domain-card"
-                      >
-                        <span className="booking-domain-card__icon">{domain.icon}</span>
-                        <div className="booking-domain-card__info">
-                          <p className="booking-domain-card__name">{domain.label}</p>
-                          <p className="body-sm text-muted">{domain.description}</p>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="body-sm text-muted">No specific domains listed. General guidance session will be booked.</p>
+                  {mappedDomains.map((domain: any) => (
+                    <button
+                      key={domain.id}
+                      onClick={() => handleDomainSelect(domain)}
+                      type="button"
+                      className="booking-domain-card"
+                    >
+                      <span className="booking-domain-card__icon">{domain.icon}</span>
+                      <div className="booking-domain-card__info">
+                        <p className="booking-domain-card__name">{domain.label}</p>
+                        <p className="body-sm text-muted">{domain.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                  
+                  {remainingDomains.length > 0 && (
+                    <div className="booking-domain-card" style={{ cursor: 'default' }}>
+                      <span className="booking-domain-card__icon">🌐</span>
+                      <div className="booking-domain-card__info" style={{ width: '100%' }}>
+                        <p className="booking-domain-card__name">Other Focus Area</p>
+                        <select 
+                          className="form-input" 
+                          style={{ 
+                            marginTop: 'var(--sp-2)', 
+                            paddingTop: '0.4rem', 
+                            paddingBottom: '0.4rem',
+                            fontSize: '0.875rem',
+                            background: 'var(--clr-bg)'
+                          }}
+                          value={selectedDomain && remainingDomains.some(rd => rd.id === selectedDomain.id) ? selectedDomain.id : ""}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (selectedId) {
+                              const domain = LIFE_DOMAINS.find(ld => ld.id === selectedId);
+                              if (domain) {
+                                handleDomainSelect(domain);
+                              }
+                            }
+                          }}
+                        >
+                          <option value="" disabled>Select a topic...</option>
+                          {remainingDomains.map(d => (
+                            <option key={d.id} value={d.id}>
+                              {d.icon} {d.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

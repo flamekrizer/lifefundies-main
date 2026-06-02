@@ -28,7 +28,9 @@ export default function AuthModal() {
       const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
       setAuthModalOpen(false)
-      if (!loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (!loggedInUser.onboardingComplete) {
         navigate('/onboarding')
       } else {
         navigate('/dashboard')
@@ -48,7 +50,9 @@ export default function AuthModal() {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
       setAuthModalOpen(false)
-      if (!loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (!loggedInUser.onboardingComplete) {
         navigate('/onboarding')
       } else {
         navigate('/dashboard')
@@ -69,14 +73,16 @@ export default function AuthModal() {
       let loggedInUser: UserType
       
       if (isLogin) {
-        loggedInUser = await signInWithEmail(email, password)
+        loggedInUser = await signInWithEmail(email, password, role)
       } else {
-        loggedInUser = await signUpWithEmail(email, password, name, role)
+        loggedInUser = await signUpWithEmail(email, password, name, phone, role)
       }
       
       setUser(loggedInUser)
       setAuthModalOpen(false)
-      if (!loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (!loggedInUser.onboardingComplete) {
         navigate('/onboarding')
       } else {
         navigate('/dashboard')
@@ -158,34 +164,32 @@ export default function AuthModal() {
             </p>
           </div>
 
-          {!isLogin && (
-            <div className="role-selector">
-              <button
-                type="button"
-                className={`role-btn ${role === 'user' ? 'role-btn--active' : ''}`}
-                id="modal-role-user"
-                onClick={() => setRole('user')}
-              >
-                <span className="role-btn__icon">🙋</span>
-                <div>
-                  <p className="role-btn__label">Seeker</p>
-                  <p className="body-sm text-muted">I want guidance</p>
-                </div>
-              </button>
-              <button
-                type="button"
-                className={`role-btn ${role === 'mentor' ? 'role-btn--active' : ''}`}
-                id="modal-role-mentor"
-                onClick={() => setRole('mentor')}
-              >
-                <span className="role-btn__icon">👨‍💼</span>
-                <div>
-                  <p className="role-btn__label">Mentor</p>
-                  <p className="body-sm text-muted">I want to guide</p>
-                </div>
-              </button>
-            </div>
-          )}
+          <div className="role-selector">
+            <button
+              type="button"
+              className={`role-btn ${role === 'user' ? 'role-btn--active' : ''}`}
+              id="modal-role-user"
+              onClick={() => setRole('user')}
+            >
+              <span className="role-btn__icon">🙋</span>
+              <div>
+                <p className="role-btn__label">Seeker</p>
+                <p className="body-sm text-muted">I want guidance</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={`role-btn ${role === 'mentor' ? 'role-btn--active' : ''}`}
+              id="modal-role-mentor"
+              onClick={() => setRole('mentor')}
+            >
+              <span className="role-btn__icon">👨‍💼</span>
+              <div>
+                <p className="role-btn__label">Mentor</p>
+                <p className="body-sm text-muted">I want to guide</p>
+              </div>
+            </button>
+          </div>
 
           <div className="auth-social" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
             <button className="auth-social-btn" id="modal-google-login" type="button" onClick={handleGoogleLogin} disabled={loading}>

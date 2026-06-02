@@ -4,21 +4,11 @@ import { Calendar, Clock, BookOpen, Star, MessageSquare, Video, X } from 'lucide
 import { getInitials, MOCK_MENTORS } from '../../utils'
 import { useAuthStore } from '../../stores'
 // @ts-ignore
-import { getUserBookings } from '../../lib/bookingService'
+import { listenToUserBookings } from '../../lib/bookingService'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import VideoRoom from '../../components/VideoRoom'
 import './Sessions.css'
-
-const SESSIONS = [
-  { id: 's1', mentor: 'Priya Sharma', domain: 'Career & Purpose', date: 'Tomorrow', time: '4:00 PM', duration: 60, status: 'confirmed', price: 349, meetingLink: '#' },
-  { id: 's2', mentor: 'Rahul Verma', domain: 'Emotional Well-being', date: 'Jun 2, 2025', time: '11:00 AM', duration: 50, status: 'pending', price: 299, meetingLink: null },
-]
-
-const PAST_SESSIONS = [
-  { id: 'ps1', mentor: 'Anika Patel', domain: 'Personal Growth', date: 'May 15, 2025', duration: 60, status: 'completed', price: 399, rating: 5, hasRated: true },
-  { id: 'ps2', mentor: 'Dr. Sanjay Mehta', domain: 'Communication', date: 'May 8, 2025', duration: 50, status: 'completed', price: 349, rating: null, hasRated: false },
-]
 
 export default function SessionsPage() {
   const { user } = useAuthStore()
@@ -31,6 +21,12 @@ export default function SessionsPage() {
   const [loadingBookings, setLoadingBookings] = useState(false)
 
   const handleRateSession = async (bookingId: string, ratingValue: number) => {
+    const targetBooking = bookings.find(b => (b.id || b.bookingId) === bookingId)
+    if (!targetBooking || targetBooking.status !== 'completed') {
+      alert('You can review a session only after it is completed.')
+      return
+    }
+
     setRatings(prev => ({ ...prev, [bookingId]: ratingValue }))
     
     // Update local bookings state
@@ -57,21 +53,17 @@ export default function SessionsPage() {
   }
 
   useEffect(() => {
-    if (user?.uid) {
-      setLoadingBookings(true)
-      getUserBookings(user.uid)
-        .then((data: any) => {
-          if (Array.isArray(data)) {
-            setBookings(data)
-          }
-        })
-        .catch((err: any) => {
-          console.error('Failed to load user bookings:', err)
-        })
-        .finally(() => {
-          setLoadingBookings(false)
-        })
-    }
+    if (!user?.uid) return
+
+    setLoadingBookings(true)
+    const unsubscribe = listenToUserBookings(user.uid, (data: any) => {
+      if (Array.isArray(data)) {
+        setBookings(data)
+      }
+      setLoadingBookings(false)
+    })
+
+    return () => unsubscribe()
   }, [user?.uid])
 
   const upcomingSessions = bookings
@@ -80,6 +72,7 @@ export default function SessionsPage() {
       const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
+        sessionId: b.sessionId || null,
         mentor: mentor?.displayName || 'LifeFundies Mentor',
         domain: b.domain,
         date: b.sessionDate,
@@ -172,7 +165,7 @@ export default function SessionsPage() {
                     {session.status === 'confirmed' ? (
                       <button 
                         className="btn btn-primary" 
-                        onClick={() => handleJoinSession(session.mentor, session.id)}
+                        onClick={() => handleJoinSession(session.mentor, session.sessionId || session.id)}
                         id={`join-${session.id}`}
                       >
                         <Video size={16} /> Join Session

@@ -3,16 +3,13 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
-import type { User as UserType } from '../../types'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../../lib/firebase'
-import { signInWithGoogle, signInAnonymously } from '../../lib/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword } from '../../lib/authService'
 import './Auth.css'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'user' | 'mentor'>('user')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,9 +20,11 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithGoogle()
+      const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -44,7 +43,9 @@ export function LoginPage() {
     try {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -62,27 +63,12 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const firebaseUser = userCredential.user
-      
-      // Fetch user profile from Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      const userData = userDoc.exists() ? userDoc.data() : {}
-      
-      const loggedInUser: UserType = {
-        uid: firebaseUser.uid,
-        lfId: userData.lfId || '',
-        displayName: firebaseUser.displayName || 'User',
-        email: firebaseUser.email || email,
-        role: userData.role || 'user',
-        domains: userData.domains || [],
-        isAnonymous: false,
-        onboardingComplete: userData.onboardingComplete || false,
-        createdAt: userData.createdAt?.toDate() || new Date(),
-      }
+      const loggedInUser = await signInWithEmail(email, password, role)
       
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -104,6 +90,34 @@ export function LoginPage() {
           </div>
           <h1 className="heading-1">Welcome back</h1>
           <p className="body-sm text-muted">Sign in to continue your journey</p>
+        </div>
+
+        {/* Role selector */}
+        <div className="role-selector" style={{ marginBottom: 'var(--sp-4)' }}>
+          <button
+            type="button"
+            className={`role-btn ${role === 'user' ? 'role-btn--active' : ''}`}
+            id="login-role-user"
+            onClick={() => setRole('user')}
+          >
+            <span className="role-btn__icon">🙋</span>
+            <div>
+              <p className="role-btn__label">Seeker</p>
+              <p className="body-sm text-muted">I want guidance</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className={`role-btn ${role === 'mentor' ? 'role-btn--active' : ''}`}
+            id="login-role-mentor"
+            onClick={() => setRole('mentor')}
+          >
+            <span className="role-btn__icon">👨‍💼</span>
+            <div>
+              <p className="role-btn__label">Mentor</p>
+              <p className="body-sm text-muted">I want to guide</p>
+            </div>
+          </button>
         </div>
 
         <div className="auth-social" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
@@ -191,51 +205,7 @@ export function RegisterPage() {
   const handleGoogleLogin = async () => {
     setLoading(true)
     try {
-<<<<<<< HEAD
-      const provider = new GoogleAuthProvider()
-      const userCredential = await signInWithPopup(auth, provider)
-      const firebaseUser = userCredential.user
-      
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      let userData = userDoc.exists() ? userDoc.data() : null
-      
-      let loggedInUser: UserType
-      
-     if (!userData) {
-  const lfId = generateLFID(firebaseUser.uid)
-
-  const newUser: UserType = {
-    uid: firebaseUser.uid,
-    lfId,
-    displayName: firebaseUser.displayName || 'Google User',
-    email: firebaseUser.email || '',
-    phone: firebaseUser.phoneNumber || '',
-    role: form.role,
-    domains: [],
-    isAnonymous: false,
-    onboardingComplete: false,
-    createdAt: new Date(),
-  }
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-        loggedInUser = newUser
-      } else {
-        loggedInUser = {
-          uid: firebaseUser.uid,
-          lfId: userData.lfId || '',
-          displayName: firebaseUser.displayName || userData.displayName || 'Google User',
-          email: firebaseUser.email || userData.email || '',
-          phone: userData.phone || firebaseUser.phoneNumber || '',
-          role: userData.role || 'user',
-          domains: userData.domains || [],
-          isAnonymous: userData.isAnonymous || false,
-          onboardingComplete: userData.onboardingComplete || false,
-          createdAt: userData.createdAt?.toDate() || new Date(),
-        }
-      }
-      
-=======
       const loggedInUser = await signInWithGoogle(form.role)
->>>>>>> b783231 (Commit local updates)
       setUser(loggedInUser)
       if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -273,29 +243,7 @@ export function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
-      const firebaseUser = userCredential.user
-      
-      // Update Auth Profile
-      await updateProfile(firebaseUser, { displayName: form.name })
-      
-      // Save user data to Firestore
-      const lfId = generateLFID(firebaseUser.uid)
-
-      const newUser: UserType = {
-      uid: firebaseUser.uid,
-      lfId,
-      displayName: form.name,
-      email: form.email,
-      phone: form.phone,
-      role: form.role,
-      domains: [],
-      isAnonymous: false,
-      onboardingComplete: false,
-      createdAt: new Date(),
-}
-      
-      await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
+      const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, form.role)
       
       setUser(newUser)
       navigate('/onboarding')
@@ -437,7 +385,7 @@ export function ForgotPasswordPage() {
     setError('')
     setMessage('')
     try {
-      await sendPasswordResetEmail(auth, email)
+      await resetPassword(email)
       setMessage('Password reset email sent! Check your inbox for instructions.')
     } catch (err: any) {
       console.error(err)

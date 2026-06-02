@@ -4,6 +4,8 @@ import { Menu, X, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react
 import { useAppStore, useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
 import { logout as firebaseLogout } from '../../lib/authService'
+// @ts-ignore
+import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
 import './Navbar.css'
 
 const NAV_LINKS = [
@@ -48,6 +50,28 @@ export default function Navbar() {
     }
   }
 
+  const handleMarkAllRead = async () => {
+    if (!user?.uid) return
+    markAllNotificationsRead()
+    try {
+      await markAllNotificationsAsRead(user.uid)
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err)
+    }
+  }
+
+  const handleMarkRead = async (id: string | number, actionUrl?: string) => {
+    markNotificationRead(id)
+    try {
+      await markNotificationAsRead(String(id))
+    } catch (err) {
+      console.error('Failed to mark notification read:', err)
+    }
+    if (actionUrl) {
+      navigate(actionUrl)
+    }
+  }
+
   return (
     <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="container navbar__inner">
@@ -73,7 +97,11 @@ export default function Navbar() {
         <div className="navbar__actions">
           {user ? (
             <>
-              <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
+              {user.role === 'mentor' ? (
+                <Link to="/mentor-portal" className="btn btn-ghost btn-sm hide-mobile">Mentor Portal</Link>
+              ) : (
+                <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
+              )}
               <div className="navbar__notif-container" style={{ position: 'relative' }}>
                 <button 
                   className="navbar__notif" 
@@ -90,7 +118,7 @@ export default function Navbar() {
                     <div className="navbar__dropdown-header-notif">
                       <span className="body-sm font-semibold text-muted">Notifications</span>
                       {unreadCount > 0 && (
-                        <button className="btn btn-ghost btn-sm" style={{ padding: 0, fontSize: '0.75rem', height: 'auto' }} onClick={markAllNotificationsRead}>
+                        <button className="btn btn-ghost btn-sm" style={{ padding: 0, fontSize: '0.75rem', height: 'auto' }} onClick={handleMarkAllRead}>
                           Mark all read
                         </button>
                       )}
@@ -101,7 +129,7 @@ export default function Navbar() {
                           <div 
                             key={n.id} 
                             className={`navbar__notification-item ${!n.isRead ? 'navbar__notification-item--unread' : ''}`}
-                            onClick={() => markNotificationRead(n.id)}
+                            onClick={() => handleMarkRead(n.id, n.actionUrl)}
                           >
                             {n.text}
                           </div>
@@ -135,7 +163,11 @@ export default function Navbar() {
                       </div>
                     </div>
                     <div className="divider" style={{ margin: '0.5rem 0' }} />
-                    <Link to="/dashboard" className="navbar__dropdown-item"><User size={15} /> Dashboard</Link>
+                    {user.role === 'mentor' ? (
+                      <Link to="/mentor-portal" className="navbar__dropdown-item"><User size={15} /> Mentor Portal</Link>
+                    ) : (
+                      <Link to="/dashboard" className="navbar__dropdown-item"><User size={15} /> Dashboard</Link>
+                    )}
                     <Link to="/settings" className="navbar__dropdown-item"><Settings size={15} /> Settings</Link>
                     <button className="navbar__dropdown-item navbar__dropdown-item--danger" onClick={handleLogout}>
                       <LogOut size={15} /> Sign Out
@@ -180,12 +212,12 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link 
-                  to="/dashboard" 
+                  to={user.role === 'mentor' ? "/mentor-portal" : "/dashboard"} 
                   className="btn btn-outline" 
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >
-                  Dashboard
+                  {user.role === 'mentor' ? "Mentor Portal" : "Dashboard"}
                 </Link>
                 <button 
                   className="btn btn-ghost" 

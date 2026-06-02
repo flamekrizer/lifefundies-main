@@ -9,6 +9,7 @@ interface Slot {
   time: string;
   duration: number;
   price: number;
+  source?: 'guide_slots' | 'guides' | 'mock';
   isBooked: boolean;
   isBlocked?: boolean;
   isActive?: boolean;
@@ -38,31 +39,7 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
           .toISOString()
           .split('T')[0];
         
-        let availableSlots: Slot[] = await getGuideSlots(guideId, today, nextWeek);
-        
-        if (!availableSlots || availableSlots.length === 0) {
-          console.log('No slots found in database, generating mock fallback slots.');
-          const fallbackSlots: Slot[] = [];
-          const times = ['10:00 AM', '02:00 PM', '04:00 PM'];
-          
-          for (let i = 1; i <= 3; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() + i);
-            const dateString = d.toISOString().split('T')[0];
-            
-            times.forEach((time, index) => {
-              fallbackSlots.push({
-                id: `mock-slot-${dateString}-${index}`,
-                date: dateString,
-                time: time,
-                duration: 60,
-                price: guidePrice,
-                isBooked: false
-              });
-            });
-          }
-          availableSlots = fallbackSlots;
-        }
+        const availableSlots: Slot[] = await getGuideSlots(guideId, today, nextWeek);
         
         // Group by date
         const groupedSlots: Record<string, Slot[]> = {};
@@ -89,16 +66,26 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
     onSlotSelect(slot);
   };
 
+  const getLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const date = getLocalDate(dateStr);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    if (date.toDateString() === today.toDateString()) {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    if (targetDate.toDateString() === today.toDateString()) {
       return 'Today';
     }
-    if (date.toDateString() === tomorrow.toDateString()) {
+    if (targetDate.toDateString() === tomorrow.toDateString()) {
       return 'Tomorrow';
     }
     
@@ -138,7 +125,7 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
               <Calendar size={14} />
               <span className="slot-selection__date-label">{formatDate(date)}</span>
               <span className="slot-selection__date-day">
-                ({new Date(date).toLocaleDateString('en-IN', { weekday: 'long' })})
+                ({getLocalDate(date).toLocaleDateString('en-IN', { weekday: 'long' })})
               </span>
             </div>
 

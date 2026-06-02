@@ -226,6 +226,25 @@ export const addReview = async (
   sessionId?: string
 ) => {
   try {
+    const completedBookingsQuery = query(
+      collection(db, 'bookings'),
+      where('userId', '==', userId),
+      where('guideId', '==', mentorId),
+      where('status', '==', 'completed'),
+      limit(1)
+    )
+    const completedBookings = await getDocs(completedBookingsQuery)
+
+    if (completedBookings.empty) {
+      throw new Error('You can review a mentor only after completing a session with them.')
+    }
+
+    const completedBooking = completedBookings.docs[0].data()
+    const reviewSessionId = sessionId || completedBooking.sessionId
+
+    if (!reviewSessionId) {
+      throw new Error('Completed session record not found for this review.')
+    }
     const batch = writeBatch(db)
     const createdAt = Timestamp.now()
 
@@ -235,7 +254,7 @@ export const addReview = async (
       userId,
       rating,
       text,
-      sessionId: sessionId || '',
+      sessionId: reviewSessionId,
       createdAt,
     })
 
@@ -258,7 +277,7 @@ export const addReview = async (
     }
 
     await batch.commit()
-    return { id: reviewRef.id, mentorId, userId, rating, text, sessionId: sessionId || '', createdAt: createdAt.toDate() }
+    return { id: reviewRef.id, mentorId, userId, rating, text, sessionId: reviewSessionId, createdAt: createdAt.toDate() }
   } catch (error) {
     console.error('Error adding review:', error)
     throw error
