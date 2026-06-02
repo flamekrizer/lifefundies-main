@@ -1,3 +1,4 @@
+import { generateLFID } from '../../utils/generateLFID'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
@@ -31,8 +32,10 @@ export function LoginPage() {
       let loggedInUser: UserType
       
       if (!userData) {
+        const lfId = generateLFID(firebaseUser.uid)
         const newUser: UserType = {
           uid: firebaseUser.uid,
+          lfId,
           displayName: firebaseUser.displayName || 'Google User',
           email: firebaseUser.email || '',
           phone: firebaseUser.phoneNumber || '',
@@ -47,6 +50,7 @@ export function LoginPage() {
       } else {
         loggedInUser = {
           uid: firebaseUser.uid,
+          lfId: userData.lfId || '',
           displayName: firebaseUser.displayName || userData.displayName || 'Google User',
           email: firebaseUser.email || userData.email || '',
           phone: userData.phone || firebaseUser.phoneNumber || '',
@@ -86,6 +90,7 @@ export function LoginPage() {
       
       const loggedInUser: UserType = {
         uid: firebaseUser.uid,
+        lfId: userData.lfId || '',
         displayName: firebaseUser.displayName || 'User',
         email: firebaseUser.email || email,
         role: userData.role || 'user',
@@ -209,23 +214,27 @@ export function RegisterPage() {
       
       let loggedInUser: UserType
       
-      if (!userData) {
-        const newUser: UserType = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || 'Google User',
-          email: firebaseUser.email || '',
-          phone: firebaseUser.phoneNumber || '',
-          role: form.role, // Use selected role
-          domains: [],
-          isAnonymous: false,
-          onboardingComplete: false,
-          createdAt: new Date(),
-        }
+     if (!userData) {
+  const lfId = generateLFID(firebaseUser.uid)
+
+  const newUser: UserType = {
+    uid: firebaseUser.uid,
+    lfId,
+    displayName: firebaseUser.displayName || 'Google User',
+    email: firebaseUser.email || '',
+    phone: firebaseUser.phoneNumber || '',
+    role: form.role,
+    domains: [],
+    isAnonymous: false,
+    onboardingComplete: false,
+    createdAt: new Date(),
+  }
         await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
         loggedInUser = newUser
       } else {
         loggedInUser = {
           uid: firebaseUser.uid,
+          lfId: userData.lfId || '',
           displayName: firebaseUser.displayName || userData.displayName || 'Google User',
           email: firebaseUser.email || userData.email || '',
           phone: userData.phone || firebaseUser.phoneNumber || '',
@@ -262,17 +271,20 @@ export function RegisterPage() {
       await updateProfile(firebaseUser, { displayName: form.name })
       
       // Save user data to Firestore
+      const lfId = generateLFID(firebaseUser.uid)
+
       const newUser: UserType = {
-        uid: firebaseUser.uid,
-        displayName: form.name,
-        email: form.email,
-        phone: form.phone,
-        role: form.role,
-        domains: [],
-        isAnonymous: false,
-        onboardingComplete: false,
-        createdAt: new Date(),
-      }
+      uid: firebaseUser.uid,
+      lfId,
+      displayName: form.name,
+      email: form.email,
+      phone: form.phone,
+      role: form.role,
+      domains: [],
+      isAnonymous: false,
+      onboardingComplete: false,
+      createdAt: new Date(),
+}
       
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
       
