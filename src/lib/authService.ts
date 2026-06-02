@@ -139,7 +139,7 @@ export const signInAnonymously = async () => {
         role: userData.role || 'user',
         domains: userData.domains || [],
         isAnonymous: true,
-        onboardingComplete: userData.onboardingComplete || true,
+        onboardingComplete: userData.onboardingComplete || false,
         createdAt: userData.createdAt?.toDate() || new Date(),
       } as UserType
     }
@@ -151,7 +151,7 @@ export const signInAnonymously = async () => {
       role: 'user',
       domains: [],
       isAnonymous: true,
-      onboardingComplete: true,
+      onboardingComplete: false,
       createdAt: new Date(),
     }
 
@@ -214,7 +214,7 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
             role: 'user',
             domains: [],
             isAnonymous: true,
-            onboardingComplete: true,
+            onboardingComplete: false,
             createdAt: new Date(),
           }
           await setDoc(doc(db, 'users', firebaseUser.uid), {

@@ -42,6 +42,8 @@ export interface User {
   city?: string
   profession?: string
   ageGroup?: string
+  mentorInterests?: string[]
+  onboardingStep?: number
 }
 
 export interface Mentor {
@@ -83,11 +85,13 @@ export interface Post {
   id: string
   authorId: string
   authorName: string
+  authorPhotoURL?: string
   isAnonymous: boolean
   domain: DomainId
   title: string
   content: string
   upvotes: number
+  upvoters?: string[]
   commentCount: number
   tags: string[]
   createdAt: Date
@@ -99,9 +103,11 @@ export interface Comment {
   postId: string
   authorId: string
   authorName: string
+  authorPhotoURL?: string
   isAnonymous: boolean
   content: string
   upvotes: number
+  upvoters?: string[]
   createdAt: Date
 }
 

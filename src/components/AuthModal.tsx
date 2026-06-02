@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield, X, Loader } from 'lucide-react'
 import { useAuthStore } from '../stores'
 import type { User as UserType } from '../types'
-import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '../lib/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously } from '../lib/authService'
 import '../pages/Auth/Auth.css'
 
 export default function AuthModal() {
@@ -36,6 +36,26 @@ export default function AuthModal() {
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Google sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAnonymousLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const loggedInUser = await signInAnonymously()
+      setUser(loggedInUser)
+      setAuthModalOpen(false)
+      if (!loggedInUser.onboardingComplete) {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Anonymous sign in failed')
     } finally {
       setLoading(false)
     }
@@ -167,10 +187,14 @@ export default function AuthModal() {
             </div>
           )}
 
-          <div className="auth-social">
+          <div className="auth-social" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
             <button className="auth-social-btn" id="modal-google-login" type="button" onClick={handleGoogleLogin} disabled={loading}>
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" />
               Continue with Google
+            </button>
+            <button className="auth-social-btn" id="modal-anonymous-login" type="button" onClick={handleAnonymousLogin} disabled={loading} style={{ background: 'var(--clr-bg-card)', borderColor: 'var(--clr-border-strong)' }}>
+              <span style={{ fontSize: '1.1rem' }}>🎭</span>
+              Continue Anonymously
             </button>
           </div>
 

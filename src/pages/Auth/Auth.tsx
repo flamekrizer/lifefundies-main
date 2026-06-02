@@ -7,7 +7,7 @@ import type { User as UserType } from '../../types'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../../lib/firebase'
-import { signInWithGoogle } from '../../lib/authService'
+import { signInWithGoogle, signInAnonymously } from '../../lib/authService'
 import './Auth.css'
 
 export function LoginPage() {
@@ -33,6 +33,25 @@ export function LoginPage() {
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Google sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAnonymousLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const loggedInUser = await signInAnonymously()
+      setUser(loggedInUser)
+      if (loggedInUser.onboardingComplete) {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Anonymous sign in failed')
     } finally {
       setLoading(false)
     }
@@ -87,10 +106,14 @@ export function LoginPage() {
           <p className="body-sm text-muted">Sign in to continue your journey</p>
         </div>
 
-        <div className="auth-social">
+        <div className="auth-social" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
           <button className="auth-social-btn" id="google-login" type="button" onClick={handleGoogleLogin} disabled={loading}>
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" />
             Continue with Google
+          </button>
+          <button className="auth-social-btn" id="anonymous-login" type="button" onClick={handleAnonymousLogin} disabled={loading} style={{ background: 'var(--clr-bg-card)', borderColor: 'var(--clr-border-strong)' }}>
+            <span style={{ fontSize: '1.1rem' }}>🎭</span>
+            Continue Anonymously
           </button>
         </div>
 
@@ -159,6 +182,7 @@ export function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'user' as 'user' | 'mentor' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const { setUser } = useAuthStore()
   const navigate = useNavigate()
 
@@ -221,6 +245,25 @@ export function RegisterPage() {
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Google sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAnonymousLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const loggedInUser = await signInAnonymously()
+      setUser(loggedInUser)
+      if (loggedInUser.onboardingComplete) {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Anonymous sign in failed')
     } finally {
       setLoading(false)
     }
@@ -303,16 +346,21 @@ export function RegisterPage() {
           </button>
         </div>
 
-        <div className="auth-social">
+        <div className="auth-social" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
           <button className="auth-social-btn" id="google-register" type="button" onClick={handleGoogleLogin} disabled={loading}>
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" />
             Continue with Google
+          </button>
+          <button className="auth-social-btn" id="anonymous-register" type="button" onClick={handleAnonymousLogin} disabled={loading} style={{ background: 'var(--clr-bg-card)', borderColor: 'var(--clr-border-strong)' }}>
+            <span style={{ fontSize: '1.1rem' }}>🎭</span>
+            Continue Anonymously
           </button>
         </div>
 
         <div className="auth-divider"><span>or register with email</span></div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          {error && <div className="auth-error">{error}</div>}
           <div className="auth-form-grid">
             <div className="form-group">
               <label className="form-label" htmlFor="reg-name">Full Name</label>

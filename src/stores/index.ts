@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 // ── App Store ──────────────────────────────────────
 export interface NotificationItem {
-  id: number
+  id: number | string
   text: string
   isRead: boolean
 }
@@ -39,18 +39,14 @@ interface AppState {
   setPosts: (posts: Post[]) => void
   setNotificationsList: (list: NotificationItem[]) => void
   markAllNotificationsRead: () => void
-  markNotificationRead: (id: number) => void
+  markNotificationRead: (id: number | string) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   mentors: [],
   sessions: [],
   posts: [],
-  notificationsList: [
-    { id: 1, text: '📅 Priya Sharma confirmed your booking for tomorrow at 4:00 PM.', isRead: false },
-    { id: 2, text: "💬 New reply on your thread in the 'Career & Purpose' community!", isRead: false },
-    { id: 3, text: '🌿 Complete your onboarding questions to unlock matches in other domains.', isRead: true }
-  ],
+  notificationsList: [],
   setMentors: (mentors) => set({ mentors }),
   setSessions: (sessions) => set({ sessions }),
   setPosts: (posts) => set({ posts }),

@@ -15,7 +15,6 @@ export default function CommunityPage() {
   const [showNewPost, setShowNewPost] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [upvotedPosts, setUpvotedPosts] = useState<Set<string>>(new Set())
   const { user, setAuthModalOpen } = useAuthStore()
 
   useEffect(() => {
@@ -39,21 +38,42 @@ export default function CommunityPage() {
       setAuthModalOpen(true)
       return
     }
+
+    setPosts(prevPosts => prevPosts.map(p => {
+      if (p.id === postId) {
+        const upvoters = p.upvoters || []
+        const isCurrentlyUpvoted = upvoters.includes(user.uid)
+        const newUpvoters = isCurrentlyUpvoted 
+          ? upvoters.filter((id: string) => id !== user.uid)
+          : [...upvoters, user.uid]
+        return {
+          ...p,
+          upvotes: isCurrentlyUpvoted ? p.upvotes - 1 : p.upvotes + 1,
+          upvoters: newUpvoters
+        }
+      }
+      return p
+    }))
+
     try {
       await upvotePost(postId, user.uid)
-      setUpvotedPosts(prev => {
-        const updated = new Set(prev)
-        if (updated.has(postId)) {
-          updated.delete(postId)
-        } else {
-          updated.add(postId)
-        }
-        return updated
-      })
-      // Reload posts to get updated upvote counts
-      await loadPosts()
     } catch (error) {
       console.error('Failed to upvote:', error)
+      setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === postId) {
+          const upvoters = p.upvoters || []
+          const isCurrentlyUpvoted = upvoters.includes(user.uid)
+          const newUpvoters = isCurrentlyUpvoted 
+            ? upvoters.filter((id: string) => id !== user.uid)
+            : [...upvoters, user.uid]
+          return {
+            ...p,
+            upvotes: isCurrentlyUpvoted ? p.upvotes - 1 : p.upvotes + 1,
+            upvoters: newUpvoters
+          }
+        }
+        return p
+      }))
     }
   }
 
@@ -154,6 +174,8 @@ export default function CommunityPage() {
                               <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
                                 <EyeOff size={12} />
                               </div>
+                            ) : post.authorPhotoURL ? (
+                              <img src={post.authorPhotoURL} alt={post.authorName} className="avatar avatar-sm" style={{ objectFit: 'cover' }} />
                             ) : (
                               <div className="avatar avatar-sm" style={{ background: `hsl(${i * 90}, 55%, 40%)` }}>
                                 {getInitials(post.authorName)}
@@ -182,7 +204,7 @@ export default function CommunityPage() {
 
                         <div className="post-card__actions">
                           <button
-                            className={`post-card__action ${upvotedPosts.has(post.id) ? 'post-card__action--active' : ''}`}
+                            className={`post-card__action ${user && post.upvoters?.includes(user.uid) ? 'post-card__action--active' : ''}`}
                             onClick={() => toggleUpvote(post.id)}
                             id={`upvote-${post.id}`}
                             aria-label={`Upvote: ${post.upvotes}`}
@@ -282,7 +304,6 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
   const [content, setContent] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [upvotedComments, setUpvotedComments] = useState<Set<string>>(new Set())
 
   const loadComments = async () => {
     setLoading(true)
@@ -311,6 +332,7 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
         postId: post.id,
         authorId: user.uid,
         authorName: isAnonymous ? 'Anonymous' : user.displayName,
+        authorPhotoURL: isAnonymous ? undefined : user.photoURL,
         isAnonymous,
         content: content.trim(),
         upvotes: 0,
@@ -331,16 +353,43 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
       setAuthModalOpen(true)
       return
     }
+
+    setComments(prevComments => prevComments.map(c => {
+      if (c.id === commentId) {
+        const upvoters = c.upvoters || []
+        const isCurrentlyUpvoted = upvoters.includes(user.uid)
+        const newUpvoters = isCurrentlyUpvoted
+          ? upvoters.filter((id: string) => id !== user.uid)
+          : [...upvoters, user.uid]
+        return {
+          ...c,
+          upvotes: isCurrentlyUpvoted ? c.upvotes - 1 : c.upvotes + 1,
+          upvoters: newUpvoters
+        }
+      }
+      return c
+    }))
+
     try {
-      const added = await upvoteComment(commentId, user.uid)
-      setUpvotedComments(prev => {
-        const updated = new Set(prev)
-        added ? updated.add(commentId) : updated.delete(commentId)
-        return updated
-      })
-      await loadComments()
+      await upvoteComment(commentId, user.uid)
     } catch (error) {
       console.error('Failed to upvote comment:', error)
+      // Rollback
+      setComments(prevComments => prevComments.map(c => {
+        if (c.id === commentId) {
+          const upvoters = c.upvoters || []
+          const isCurrentlyUpvoted = upvoters.includes(user.uid)
+          const newUpvoters = isCurrentlyUpvoted
+            ? upvoters.filter((id: string) => id !== user.uid)
+            : [...upvoters, user.uid]
+          return {
+            ...c,
+            upvotes: isCurrentlyUpvoted ? c.upvotes - 1 : c.upvotes + 1,
+            upvoters: newUpvoters
+          }
+        }
+        return c
+      }))
     }
   }
 
@@ -376,7 +425,7 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
                 <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} />
                 <span className="body-sm">Comment anonymously</span>
               </label>
-              <button className="btn btn-primary btn-sm" type="submit" disabled={submitting}>
+              <button className="btn btn-primary btn-sm" type="submit" disabled={submitting || !content.trim()}>
                 {submitting ? <Loader size={16} className="animate-spin" /> : 'Save Comment'}
               </button>
             </div>
@@ -391,16 +440,24 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
               <article className="comment-item" key={comment.id}>
                 <div className="comment-item__header">
                   <div className="post-card__author">
-                    <div className="avatar avatar-sm" style={{ background: comment.isAnonymous ? 'var(--clr-bg-alt)' : 'var(--clr-primary)', border: '1px solid var(--clr-border)' }}>
-                      {comment.isAnonymous ? <EyeOff size={12} /> : getInitials(comment.authorName)}
-                    </div>
+                    {comment.isAnonymous ? (
+                      <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
+                        <EyeOff size={12} />
+                      </div>
+                    ) : comment.authorPhotoURL ? (
+                      <img src={comment.authorPhotoURL} alt={comment.authorName} className="avatar avatar-sm" style={{ objectFit: 'cover' }} />
+                    ) : (
+                      <div className="avatar avatar-sm" style={{ background: 'var(--clr-primary)', border: '1px solid var(--clr-border)' }}>
+                        {getInitials(comment.authorName)}
+                      </div>
+                    )}
                     <div>
                       <p className="post-card__name body-sm">{comment.authorName}</p>
                       <p className="body-sm text-subtle">{timeAgo(comment.createdAt)}</p>
                     </div>
                   </div>
                   <button
-                    className={`post-card__action ${upvotedComments.has(comment.id) ? 'post-card__action--active' : ''}`}
+                    className={`post-card__action ${user && comment.upvoters?.includes(user.uid) ? 'post-card__action--active' : ''}`}
                     onClick={() => toggleCommentUpvote(comment.id)}
                     type="button"
                   >
@@ -435,6 +492,7 @@ function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p
       const newPost = await createPost({
         authorId: user.uid,
         authorName: form.isAnonymous ? 'Anonymous' : user.displayName,
+        authorPhotoURL: form.isAnonymous ? undefined : user.photoURL,
         isAnonymous: form.isAnonymous,
         domain: form.domain as any,
         title: form.title,

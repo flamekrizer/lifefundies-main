@@ -125,7 +125,22 @@
   padding: var(--sp-3) var(--sp-4);
   background: var(--clr-bg-alt);
   border-radius: var(--radius-md);
-  border: 1px solid var(--clr-border);
+  border: 1.5px solid var(--clr-border);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.ob-feature:hover {
+  border-color: var(--clr-border-strong);
+  background: var(--clr-bg-card-hover);
+}
+
+.ob-feature--active {
+  background: var(--clr-primary-glow) !important;
+  border-color: var(--clr-primary) !important;
+  color: var(--clr-text) !important;
 }
 
 .ob-form {

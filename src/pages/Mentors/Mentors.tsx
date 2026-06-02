@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom'
-import { Search, Filter, Star, Users, CheckCircle, X } from 'lucide-react'
+import { Search, Filter, Star, Users, CheckCircle, X, Heart } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
 import BookingModal from '../../components/BookingModal'
 import { useAuthStore } from '../../stores'
 import { addReview, getMentorReviews } from '../../lib/communityService'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import './Mentors.css'
 
 export default function MentorsPage() {
@@ -20,7 +22,27 @@ export default function MentorsPage() {
   const navigate = useNavigate()
   const [bookingMentor, setBookingMentor] = useState<any>(null)
   const [reviewMentorId, setReviewMentorId] = useState<string | null>(null)
-  const { user, setAuthModalOpen } = useAuthStore()
+  const { user, setAuthModalOpen, setUser } = useAuthStore()
+
+  const handleToggleInterest = async (mentorId: string) => {
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
+    const currentInterests = (user as any).mentorInterests || []
+    const updatedInterests = currentInterests.includes(mentorId)
+      ? currentInterests.filter((mid: string) => mid !== mentorId)
+      : [...currentInterests, mentorId]
+    
+    setUser({ ...user, mentorInterests: updatedInterests })
+
+    try {
+      const userRef = doc(db, 'users', user.uid)
+      await updateDoc(userRef, { mentorInterests: updatedInterests })
+    } catch (err) {
+      console.error('Failed to update mentor interests:', err)
+    }
+  }
 
   useEffect(() => {
     if (id) {
@@ -147,90 +169,102 @@ export default function MentorsPage() {
           {/* Mentor Grid */}
           {filtered.length > 0 ? (
             <div className="mentors-grid-full">
-              {filtered.map((mentor, i) => (
-                <div key={mentor.uid} className={`mentor-card-full animate-fadeInUp delay-${((i % 3 + 1) * 100) as 100 | 200 | 300}`} id={`mentor-full-${mentor.uid}`}>
-                  <div className="mentor-card-full__left">
-                    <div className="avatar avatar-xl" style={{ background: `hsl(${i * 80 + 30}, 60%, 40%)`, overflow: 'hidden' }}>
-                      {mentor.photoURL ? (
-                        <img src={mentor.photoURL} alt={mentor.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        getInitials(mentor.displayName)
+              {filtered.map((mentor, i) => {
+                const isInterested = (user as any)?.mentorInterests?.includes(mentor.uid) || false
+                return (
+                  <div key={mentor.uid} className={`mentor-card-full animate-fadeInUp delay-${((i % 3 + 1) * 100) as 100 | 200 | 300}`} id={`mentor-full-${mentor.uid}`}>
+                    <div className="mentor-card-full__left">
+                      <div className="avatar avatar-xl" style={{ background: `hsl(${i * 80 + 30}, 60%, 40%)`, overflow: 'hidden' }}>
+                        {mentor.photoURL ? (
+                          <img src={mentor.photoURL} alt={mentor.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          getInitials(mentor.displayName)
+                        )}
+                      </div>
+                      {mentor.isVerified && (
+                        <div className="mentor-card-full__verified-badge">
+                          <CheckCircle size={14} /> Verified
+                        </div>
                       )}
                     </div>
-                    {mentor.isVerified && (
-                      <div className="mentor-card-full__verified-badge">
-                        <CheckCircle size={14} /> Verified
+
+                    <div className="mentor-card-full__content">
+                      <div className="mentor-card-full__header">
+                        <div>
+                          <h3 className="mentor-card-full__name">{mentor.displayName}</h3>
+                          <p className="body-sm text-muted">{mentor.education} · {mentor.yearsOfExperience}+ years</p>
+                        </div>
+                        <div className="mentor-card-full__rating">
+                          <Star size={16} style={{ color: 'var(--clr-secondary)', fill: 'var(--clr-secondary)' }} />
+                          <span className="mentor-card-full__rating-val">{mentor.rating}</span>
+                          <span className="body-sm text-muted">({mentor.reviewCount} reviews)</span>
+                        </div>
                       </div>
-                    )}
+
+                      <p className="body-sm text-muted">{mentor.bio}</p>
+
+                      <div className="mentor-card-full__domains">
+                        {mentor.domains.map(d => {
+                          const domain = LIFE_DOMAINS.find(x => x.id === d)
+                          return domain ? (
+                            <span key={d} className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
+                              {domain.icon} {domain.label}
+                            </span>
+                          ) : null
+                        })}
+                      </div>
+
+                      <div className="mentor-card-full__expertise">
+                        {mentor.expertise.map(e => (
+                          <span key={e} className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>{e}</span>
+                        ))}
+                      </div>
+
+                      <div className="mentor-card-full__footer">
+                        <div className="flex gap-4">
+                          <span className="body-sm text-muted"><Users size={13} style={{ display: 'inline' }} /> {mentor.totalSessions} sessions</span>
+                          <span className="body-sm text-muted">🌐 {mentor.languages.join(', ')}</span>
+                        </div>
+                        <div className="mentor-card-full__cta">
+                          <p className="mentor-card-full__price">{formatCurrency(mentor.sessionPrice)}<span className="body-sm text-muted">/session</span></p>
+                          <button
+                            onClick={() => setReviewMentorId(reviewMentorId === mentor.uid ? null : mentor.uid)}
+                            className="btn btn-outline"
+                            id={`reviews-${mentor.uid}`}
+                          >
+                            Reviews
+                          </button>
+                          <button
+                            onClick={() => handleToggleInterest(mentor.uid)}
+                            className={`btn ${isInterested ? 'btn-primary' : 'btn-outline'}`}
+                            style={{ padding: 'var(--sp-2) var(--sp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            id={`interest-${mentor.uid}`}
+                            aria-label="Add to interests"
+                          >
+                            <Heart size={16} fill={isInterested ? 'currentColor' : 'none'} style={{ color: isInterested ? 'white' : 'var(--clr-accent-dark)' }} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!user) {
+                                setAuthModalOpen(true)
+                              } else {
+                                navigate(`/mentors/${mentor.uid}`)
+                              }
+                            }}
+                            className="btn btn-primary"
+                            id={`book-${mentor.uid}`}
+                          >
+                            Book Session
+                          </button>
+                        </div>
+                      </div>
+                      {reviewMentorId === mentor.uid && (
+                        <MentorReviews mentor={mentor} />
+                      )}
+                    </div>
                   </div>
-
-                  <div className="mentor-card-full__content">
-                    <div className="mentor-card-full__header">
-                      <div>
-                        <h3 className="mentor-card-full__name">{mentor.displayName}</h3>
-                        <p className="body-sm text-muted">{mentor.education} · {mentor.yearsOfExperience}+ years</p>
-                      </div>
-                      <div className="mentor-card-full__rating">
-                        <Star size={16} style={{ color: 'var(--clr-secondary)', fill: 'var(--clr-secondary)' }} />
-                        <span className="mentor-card-full__rating-val">{mentor.rating}</span>
-                        <span className="body-sm text-muted">({mentor.reviewCount} reviews)</span>
-                      </div>
-                    </div>
-
-                    <p className="body-sm text-muted">{mentor.bio}</p>
-
-                    <div className="mentor-card-full__domains">
-                      {mentor.domains.map(d => {
-                        const domain = LIFE_DOMAINS.find(x => x.id === d)
-                        return domain ? (
-                          <span key={d} className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
-                            {domain.icon} {domain.label}
-                          </span>
-                        ) : null
-                      })}
-                    </div>
-
-                    <div className="mentor-card-full__expertise">
-                      {mentor.expertise.map(e => (
-                        <span key={e} className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>{e}</span>
-                      ))}
-                    </div>
-
-                    <div className="mentor-card-full__footer">
-                      <div className="flex gap-4">
-                        <span className="body-sm text-muted"><Users size={13} style={{ display: 'inline' }} /> {mentor.totalSessions} sessions</span>
-                        <span className="body-sm text-muted">🌐 {mentor.languages.join(', ')}</span>
-                      </div>
-                      <div className="mentor-card-full__cta">
-                        <p className="mentor-card-full__price">{formatCurrency(mentor.sessionPrice)}<span className="body-sm text-muted">/session</span></p>
-                        <button
-                          onClick={() => setReviewMentorId(reviewMentorId === mentor.uid ? null : mentor.uid)}
-                          className="btn btn-outline"
-                          id={`reviews-${mentor.uid}`}
-                        >
-                          Reviews
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!user) {
-                              setAuthModalOpen(true)
-                            } else {
-                              navigate(`/mentors/${mentor.uid}`)
-                            }
-                          }}
-                          className="btn btn-primary"
-                          id={`book-${mentor.uid}`}
-                        >
-                          Book Session
-                        </button>
-                      </div>
-                    </div>
-                    {reviewMentorId === mentor.uid && (
-                      <MentorReviews mentor={mentor} />
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="mentors-page__empty">

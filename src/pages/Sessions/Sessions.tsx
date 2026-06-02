@@ -108,8 +108,8 @@ export default function SessionsPage() {
       }
     })
 
-  const displayUpcoming = upcomingSessions.length > 0 ? upcomingSessions : SESSIONS
-  const displayPast = pastSessions.length > 0 ? pastSessions : PAST_SESSIONS
+  const displayUpcoming = upcomingSessions
+  const displayPast = pastSessions
 
   const handleJoinSession = (mentorName: string, id: string) => {
     setSessionMentorName(mentorName)

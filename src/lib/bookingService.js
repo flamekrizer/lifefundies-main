@@ -9,7 +9,9 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  runTransaction
+  runTransaction,
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -572,5 +574,66 @@ export async function markBookingPaidAndCreateSession({
   } catch (error) {
     console.error('markBookingPaidAndCreateSession failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Listen to user notifications in real-time
+ */
+export function listenToUserNotifications(userId, onUpdate) {
+  try {
+    const notifsRef = collection(db, 'notifications');
+    const q = query(
+      notifsRef,
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date()
+      }));
+      onUpdate(data);
+    }, (error) => {
+      console.error('Error listening to notifications:', error);
+    });
+  } catch (error) {
+    console.error('Error setting up notifications listener:', error);
+    return () => {};
+  }
+}
+
+/**
+ * Mark notification as read
+ */
+export async function markNotificationAsRead(notificationId) {
+  try {
+    const notifRef = doc(db, 'notifications', notificationId);
+    await updateDoc(notifRef, { read: true });
+  } catch (error) {
+    console.error('Error marking notification read:', error);
+  }
+}
+
+/**
+ * Mark all notifications as read for a user
+ */
+export async function markAllNotificationsAsRead(userId) {
+  try {
+    const notifsRef = collection(db, 'notifications');
+    const q = query(
+      notifsRef,
+      where('userId', '==', userId),
+      where('read', '==', false)
+    );
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+      batch.update(doc.ref, { read: true });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error('Error marking all notifications read:', error);
   }
 }

@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar, Clock, Star, TrendingUp, Users, ArrowRight, Bell, BookOpen, Heart, X } from 'lucide-react'
 // @ts-ignore
-import { getUserBookings } from '../../lib/bookingService'
+import { getUserBookings, listenToUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
+import { getUserPosts } from '../../lib/communityService'
 import { useAuthStore, useAppStore } from '../../stores'
 import { LIFE_DOMAINS } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
 import VideoRoom from '../../components/VideoRoom'
 import './Dashboard.css'
 
-const MOCK_UPCOMING = [
-  { id: 's1', mentor: 'Priya Sharma', domain: 'Career & Purpose', date: 'Tomorrow', time: '4:00 PM', duration: 60, status: 'confirmed' },
-  { id: 's2', mentor: 'Rahul Verma', domain: 'Emotional Well-being', date: 'Jun 2', time: '11:00 AM', duration: 50, status: 'pending' },
-]
+const SessionSkeleton = () => (
+  <div className="session-card skeleton" style={{ pointerEvents: 'none', height: '72px' }} />
+)
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
@@ -23,8 +23,40 @@ export default function DashboardPage() {
   const [sessionMentorName, setSessionMentorName] = useState('Priya Sharma')
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(false)
-  const { notificationsList, markAllNotificationsRead, markNotificationRead } = useAppStore()
+  const [userPostsCount, setUserPostsCount] = useState(0)
 
+  const { 
+    notificationsList, 
+    setNotificationsList, 
+    markAllNotificationsRead, 
+    markNotificationRead 
+  } = useAppStore()
+
+  // Real-time notifications listener
+  useEffect(() => {
+    let unsubscribeNotifs: (() => void) | null = null
+
+    if (user?.uid) {
+      unsubscribeNotifs = listenToUserNotifications(user.uid, (data: any) => {
+        const formatted = data.map((n: any) => ({
+          id: n.id,
+          text: `🔔 ${n.title}: ${n.body}`,
+          isRead: n.read
+        }))
+        setNotificationsList(formatted)
+      })
+    } else {
+      setNotificationsList([])
+    }
+
+    return () => {
+      if (unsubscribeNotifs) {
+        unsubscribeNotifs()
+      }
+    }
+  }, [user?.uid])
+
+  // Bookings fetch
   useEffect(() => {
     if (user?.uid) {
       setLoadingBookings(true)
@@ -43,11 +75,43 @@ export default function DashboardPage() {
     }
   }, [user?.uid])
 
+  // Community posts count fetch
+  useEffect(() => {
+    if (user?.uid) {
+      getUserPosts(user.uid)
+        .then((posts: any[]) => {
+          setUserPostsCount(posts.length)
+        })
+        .catch((err: any) => {
+          console.error('Failed to fetch user posts:', err)
+        })
+    }
+  }, [user?.uid])
+
   const unreadCount = notificationsList.filter(n => !n.isRead).length
 
   const handleJoinSession = (mentorName: string, id: string) => {
     setSessionMentorName(mentorName)
     setActiveSessionId(id)
+  }
+
+  const handleMarkAllRead = async () => {
+    if (!user?.uid) return
+    markAllNotificationsRead()
+    try {
+      await markAllNotificationsAsRead(user.uid)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleMarkRead = async (id: string | number) => {
+    markNotificationRead(id)
+    try {
+      await markNotificationAsRead(String(id))
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const greeting = () => {
@@ -57,9 +121,35 @@ export default function DashboardPage() {
     return 'Good evening'
   }
 
-  // Map bookings to upcoming sessions format
+  const currentDateStr = (() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  })();
+
+  const isNearSessionTime = (sessionDate: string, sessionTime: string, durationMinutes: number = 60) => {
+    try {
+      const [year, month, day] = sessionDate.split('-').map(Number);
+      const [hours, minutes] = sessionTime.split(':').map(Number);
+      const sessionStart = new Date(year, month - 1, day, hours, minutes);
+      const sessionEnd = new Date(sessionStart.getTime() + durationMinutes * 60 * 1000);
+      const now = new Date();
+      const fifteenMinsBefore = new Date(sessionStart.getTime() - 15 * 60 * 1000);
+      return now >= fifteenMinsBefore && now <= sessionEnd;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Filter bookings to upcoming sessions format: confirmed or pending, AND date >= current date
   const upcomingSessions = bookings
-    .filter(b => b.status === 'confirmed' || b.status === 'pending')
+    .filter(b => {
+      const isStatusMatch = b.status === 'confirmed' || b.status === 'pending';
+      const isUpcomingDate = b.sessionDate >= currentDateStr;
+      return isStatusMatch && isUpcomingDate;
+    })
     .map(b => {
       const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
@@ -68,33 +158,80 @@ export default function DashboardPage() {
         domain: b.domain,
         date: b.sessionDate,
         time: b.sessionTime,
-        duration: b.sessionDuration,
+        duration: b.sessionDuration || 60,
         status: b.status,
       }
     })
 
-  // Fallback to MOCK_UPCOMING if no real bookings exist
-  const displaySessions = upcomingSessions.length > 0 ? upcomingSessions : MOCK_UPCOMING
-
   // Dynamic progress tracker calculations
   const profileCompleteness = (() => {
-    let score = 0
-    if (user?.displayName) score += 30
-    if (user?.email) score += 30
-    if (user?.phone) score += 20
-    if (user?.onboardingComplete) score += 20
-    return score
+    if (!user) return 0;
+    let stepsCompleted = 0;
+    
+    // 1. profile photo uploaded
+    if (user.photoURL && user.photoURL.trim() !== '') {
+      stepsCompleted += 1;
+    }
+    
+    // 2. bio added
+    if ((user as any).bio && (user as any).bio.trim() !== '') {
+      stepsCompleted += 1;
+    }
+    
+    // 3. domains selected
+    if (user.domains && user.domains.length > 0) {
+      stepsCompleted += 1;
+    }
+    
+    // 4. phone/email verified (present/completed)
+    const hasEmail = user.email && user.email.trim() !== '';
+    const hasPhone = user.phone && user.phone.trim() !== '';
+    if (hasEmail && hasPhone) {
+      stepsCompleted += 1;
+    }
+    
+    // 5. onboarding questions completed
+    if (user.onboardingComplete) {
+      stepsCompleted += 1;
+    }
+    
+    // 6. at least one mentor interest selected
+    const interests = (user as any).mentorInterests || [];
+    if (interests.length > 0) {
+      stepsCompleted += 1;
+    }
+    
+    return Math.round((stepsCompleted / 6) * 100);
+  })();
+
+  const onboardingProgress = (() => {
+    if (!user) return 0;
+    if (user.onboardingComplete) return 100;
+    
+    let stepsCompleted = 0;
+    if ((user as any).selectedWelcomeOption) stepsCompleted += 1;
+    if (user.city || user.profession || user.ageGroup) stepsCompleted += 1;
+    if (user.domains && user.domains.length > 0) stepsCompleted += 1;
+    if ((user as any).challenge) stepsCompleted += 1;
+    if ((user as any).sessionPreference) stepsCompleted += 1;
+    
+    return Math.round((stepsCompleted / 5) * 100);
+  })();
+
+  const activeBookings = bookings.filter(b => b.status !== 'cancelled')
+  const completedBookings = activeBookings.filter(b => b.status === 'completed')
+  const sessionsProgress = activeBookings.length > 0
+    ? Math.round((completedBookings.length / activeBookings.length) * 100)
+    : 0
+
+  const completedSessionsCount = completedBookings.length.toString()
+
+  const averageRating = (() => {
+    const ratedBookings = bookings.filter(b => b.status === 'completed' && b.rating)
+    if (ratedBookings.length === 0) return '—'
+    const total = ratedBookings.reduce((sum, b) => sum + b.rating, 0)
+    return (total / ratedBookings.length).toFixed(1)
   })()
-
-  const onboardingProgress = user?.onboardingComplete ? 100 : 0
-
-  const sessionsProgress = bookings.length > 0
-    ? Math.round((bookings.filter(b => b.status === 'completed').length / bookings.length) * 100)
-    : 30 // Fallback mock value
-
-  const completedSessionsCount = bookings.length > 0
-    ? bookings.filter(b => b.status === 'completed').length.toString()
-    : '3' // Fallback mock value
 
   return (
     <div className="page-wrapper">
@@ -104,7 +241,9 @@ export default function DashboardPage() {
           <div className="dashboard__header animate-fadeInUp">
             <div>
               <p className="text-muted body-sm">{greeting()},</p>
-              <h1 className="display-2 dashboard__name">{user?.displayName || 'Explorer'} 👋</h1>
+              <h1 className="display-2">
+                <span className="dashboard__name">{user?.displayName || 'Explorer'}</span> 👋
+              </h1>
               <p className="text-muted">Continue your journey to life clarity.</p>
             </div>
             <div className="dashboard__header-actions" style={{ position: 'relative' }}>
@@ -127,7 +266,7 @@ export default function DashboardPage() {
                   <div className="flex-between" style={{ padding: 'var(--sp-3) var(--sp-4)', borderBottom: '1px solid var(--clr-border)' }}>
                     <span className="body-sm font-semibold">Notifications</span>
                     {unreadCount > 0 && (
-                      <button className="btn btn-ghost btn-sm" style={{ padding: 0, fontSize: '0.75rem' }} onClick={markAllNotificationsRead}>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: 0, fontSize: '0.75rem' }} onClick={handleMarkAllRead}>
                         Mark all read
                       </button>
                     )}
@@ -138,7 +277,7 @@ export default function DashboardPage() {
                         <div 
                           key={n.id} 
                           className={`dashboard__notification-item ${!n.isRead ? 'dashboard__notification-item--unread' : ''}`}
-                          onClick={() => markNotificationRead(n.id)}
+                          onClick={() => handleMarkRead(n.id)}
                           style={{ cursor: 'pointer' }}
                         >
                           {n.text}
@@ -166,9 +305,9 @@ export default function DashboardPage() {
               <div className="dashboard__stats animate-fadeInUp delay-100">
                 {[
                   { icon: Calendar, label: 'Sessions Done', value: completedSessionsCount, color: 'var(--clr-primary)' },
-                  { icon: Star, label: 'Avg Rating Given', value: '4.8', color: 'var(--clr-secondary)' },
+                  { icon: Star, label: 'Avg Rating Given', value: averageRating, color: 'var(--clr-secondary)' },
                   { icon: TrendingUp, label: 'Domains Explored', value: userDomains.length.toString(), color: 'var(--clr-accent)' },
-                  { icon: Heart, label: 'Community Posts', value: '7', color: 'var(--clr-purple)' },
+                  { icon: Heart, label: 'Community Posts', value: userPostsCount.toString(), color: 'var(--clr-purple)' },
                 ].map((stat, i) => (
                   <div key={i} className="dashboard__stat-card">
                     <div className="dashboard__stat-icon" style={{ background: `${stat.color}20`, color: stat.color }}>
@@ -188,52 +327,64 @@ export default function DashboardPage() {
                   <h2 className="heading-2">Upcoming Sessions</h2>
                   <Link to="/sessions" className="btn btn-ghost btn-sm">View all</Link>
                 </div>
-                {displaySessions.length > 0 ? (
+                {loadingBookings ? (
                   <div className="flex-col gap-3">
-                    {displaySessions.map(session => (
-                      <div key={session.id} className="session-card" id={`session-${session.id}`}>
-                        <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                          {(() => {
-                            const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
-                            return mentor?.photoURL ? (
-                              <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              getInitials(session.mentor)
-                            );
-                          })()}
-                        </div>
-                        <div className="session-card__info">
-                          <p className="session-card__mentor">{session.mentor}</p>
-                          <div className="flex gap-3">
-                            <span className="body-sm text-muted flex gap-1"><Calendar size={13} /> {session.date}</span>
-                            <span className="body-sm text-muted flex gap-1"><Clock size={13} /> {session.time}</span>
-                            <span className="body-sm text-muted flex gap-1"><BookOpen size={13} /> {session.domain}</span>
+                    <SessionSkeleton />
+                    <SessionSkeleton />
+                  </div>
+                ) : upcomingSessions.length > 0 ? (
+                  <div className="flex-col gap-3">
+                    {upcomingSessions.map(session => {
+                      const isJoinable = session.status === 'confirmed' && isNearSessionTime(session.date, session.time, session.duration);
+                      return (
+                        <div key={session.id} className="session-card" id={`session-${session.id}`}>
+                          <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                            {(() => {
+                              const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
+                              return mentor?.photoURL ? (
+                                <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                getInitials(session.mentor)
+                              );
+                            })()}
+                          </div>
+                          <div className="session-card__info">
+                            <p className="session-card__mentor">{session.mentor}</p>
+                            <div className="flex gap-3">
+                              <span className="body-sm text-muted flex gap-1"><Calendar size={13} /> {session.date}</span>
+                              <span className="body-sm text-muted flex gap-1"><Clock size={13} /> {session.time}</span>
+                              <span className="body-sm text-muted flex gap-1"><BookOpen size={13} /> {session.domain}</span>
+                            </div>
+                          </div>
+                          <div className="session-card__actions">
+                            <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
+                              {session.status}
+                            </span>
+                            <button 
+                              className="btn btn-outline btn-sm"
+                              onClick={() => handleJoinSession(session.mentor, session.id)}
+                              disabled={!isJoinable}
+                            >
+                              Join
+                            </button>
                           </div>
                         </div>
-                        <div className="session-card__actions">
-                          <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
-                            {session.status}
-                          </span>
-                          <button 
-                            className="btn btn-outline btn-sm"
-                            onClick={() => handleJoinSession(session.mentor, session.id)}
-                          >
-                            Join
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="dashboard__empty">
                     <Calendar size={32} />
-                    <p>No upcoming sessions</p>
-                    <Link to="/mentors" className="btn btn-primary btn-sm">Book your first session</Link>
+                    <p style={{ fontWeight: 600, color: 'var(--clr-text)' }}>No upcoming sessions yet</p>
+                    <p className="body-sm text-muted" style={{ marginBottom: 'var(--sp-2)' }}>
+                      Book your first mentorship session to get started.
+                    </p>
+                    <Link to="/mentors" className="btn btn-primary btn-sm">Book a Session</Link>
                   </div>
                 )}
               </div>
 
-              {/* Recommended Mentors */}
+               {/* Recommended Mentors */}
               <div className="dashboard__section animate-fadeInUp delay-300">
                 <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
                   <h2 className="heading-2">Recommended for You</h2>

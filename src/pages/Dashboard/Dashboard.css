@@ -256,6 +256,18 @@
   font-weight: 500;
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.skeleton {
+  animation: pulse 1.5s ease-in-out infinite;
+  background: var(--clr-border) !important;
+  color: transparent !important;
+  border-color: transparent !important;
+}
+
 @media (max-width: 480px) {
   .dashboard__notifications-dropdown {
     position: fixed;

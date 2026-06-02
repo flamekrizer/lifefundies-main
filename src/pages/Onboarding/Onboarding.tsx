@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ArrowRight, ArrowLeft, Shield, Eye, EyeOff } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
@@ -19,11 +19,55 @@ export default function OnboardingPage() {
     challenge: '',
     isAnonymous: false,
     sessionPreference: 'one-on-one' as string,
+    selectedWelcomeOption: '' as string,
   })
   const { user, setUser } = useAuthStore()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    if (user) {
+      setData({
+        city: user.city || '',
+        profession: user.profession || '',
+        ageGroup: user.ageGroup || '',
+        domains: user.domains || [],
+        challenge: (user as any).challenge || '',
+        isAnonymous: user.isAnonymous || false,
+        sessionPreference: (user as any).sessionPreference || 'one-on-one',
+        selectedWelcomeOption: (user as any).selectedWelcomeOption || '',
+      })
+      if (user.onboardingComplete) {
+        navigate('/dashboard', { replace: true })
+      } else if ((user as any).onboardingStep !== undefined) {
+        setStep((user as any).onboardingStep)
+      }
+    }
+  }, [user])
+
+  const saveProgress = async (nextStep: number) => {
+    if (user) {
+      try {
+        const updateData = {
+          ...data,
+          onboardingStep: nextStep
+        }
+        await updateDoc(doc(db, 'users', user.uid), updateData)
+        setUser({ ...user, ...updateData })
+      } catch (err) {
+        console.error('Failed to save onboarding progress:', err)
+      }
+    }
+  }
+
   const update = (field: string, value: unknown) => setData(d => ({ ...d, [field]: value }))
+
+  const handleWelcomeOptionSelect = (optionId: string) => {
+    setData(d => ({
+      ...d,
+      selectedWelcomeOption: optionId,
+      isAnonymous: optionId === 'anonymous' ? true : d.isAnonymous
+    }))
+  }
 
   const toggleDomain = (id: DomainId) => {
     const existing = data.domains
@@ -55,57 +99,104 @@ export default function OnboardingPage() {
   }
 
   const progress = ((step + 1) / STEPS.length) * 100
+  const isAnonymousUser = user?.isAnonymous || false
 
   return (
     <div className="onboarding">
       <div className="onboarding__container">
         {/* Progress */}
-        <div className="onboarding__progress">
-          <div className="onboarding__steps">
-            {STEPS.map((s, i) => (
-              <div key={i} className={`onboarding__step ${i <= step ? 'onboarding__step--done' : ''} ${i === step ? 'onboarding__step--active' : ''}`}>
-                <div className="onboarding__step-dot">
-                  {i < step ? <Check size={12} /> : i + 1}
+        {!isAnonymousUser && (
+          <div className="onboarding__progress">
+            <div className="onboarding__steps">
+              {STEPS.map((s, i) => (
+                <div key={i} className={`onboarding__step ${i <= step ? 'onboarding__step--done' : ''} ${i === step ? 'onboarding__step--active' : ''}`}>
+                  <div className="onboarding__step-dot">
+                    {i < step ? <Check size={12} /> : i + 1}
+                  </div>
+                  <span className="onboarding__step-label hide-mobile">{s}</span>
                 </div>
-                <span className="onboarding__step-label hide-mobile">{s}</span>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="progress-bar" style={{ marginTop: 'var(--sp-4)' }}>
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-          <div className="progress-bar" style={{ marginTop: 'var(--sp-4)' }}>
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
+        )}
 
         {/* Step Content */}
         <div className="onboarding__card animate-scaleIn">
-          {step === 0 && <WelcomeStep name={user?.displayName || 'there'} />}
-          {step === 1 && <AboutStep data={data} update={update} />}
-          {step === 2 && <DomainsStep selected={data.domains} toggle={toggleDomain} />}
-          {step === 3 && (
-            <ChallengeStep 
-              value={data.challenge} 
-              onChange={v => update('challenge', v)} 
-              isAnonymous={data.isAnonymous}
-              onAnonymousChange={v => update('isAnonymous', v)}
-            />
+          {isAnonymousUser ? (
+            <DomainsStep selected={data.domains} toggle={toggleDomain} />
+          ) : (
+            <>
+              {step === 0 && (
+                <WelcomeStep 
+                  selectedOption={data.selectedWelcomeOption} 
+                  onSelect={handleWelcomeOptionSelect} 
+                />
+              )}
+              {step === 1 && <AboutStep data={data} update={update} />}
+              {step === 2 && <DomainsStep selected={data.domains} toggle={toggleDomain} />}
+              {step === 3 && (
+                <ChallengeStep 
+                  value={data.challenge} 
+                  onChange={v => update('challenge', v)} 
+                  isAnonymous={data.isAnonymous}
+                  onAnonymousChange={v => update('isAnonymous', v)}
+                />
+              )}
+              {step === 4 && <PrefsStep data={data} update={update} />}
+            </>
           )}
-          {step === 4 && <PrefsStep data={data} update={update} />}
 
           <div className="onboarding__nav">
-            {step > 0 && (
-              <button className="btn btn-ghost" onClick={() => setStep(s => s - 1)} id="onboarding-back">
-                <ArrowLeft size={16} /> Back
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
-            {step < STEPS.length - 1 ? (
-              <button className="btn btn-primary btn-lg" onClick={() => setStep(s => s + 1)} id="onboarding-next">
-                Continue <ArrowRight size={16} />
-              </button>
+            {isAnonymousUser ? (
+              <>
+                <div style={{ flex: 1 }} />
+                <button 
+                  className="btn btn-primary btn-lg" 
+                  onClick={handleFinish} 
+                  id="onboarding-finish"
+                  disabled={data.domains.length === 0}
+                >
+                  Go to Dashboard <ArrowRight size={16} />
+                </button>
+              </>
             ) : (
-              <button className="btn btn-primary btn-lg" onClick={handleFinish} id="onboarding-finish">
-                Go to Dashboard <ArrowRight size={16} />
-              </button>
+              <>
+                {step > 0 && (
+                  <button className="btn btn-ghost" onClick={() => {
+                    const prevStep = step - 1
+                    setStep(prevStep)
+                    saveProgress(prevStep)
+                  }} id="onboarding-back">
+                    <ArrowLeft size={16} /> Back
+                  </button>
+                )}
+                <div style={{ flex: 1 }} />
+                {step < STEPS.length - 1 ? (
+                  <button 
+                    className="btn btn-primary btn-lg" 
+                    onClick={() => {
+                      const nextStep = step + 1
+                      setStep(nextStep)
+                      saveProgress(nextStep)
+                    }} 
+                    id="onboarding-next"
+                    disabled={
+                      (step === 0 && !data.selectedWelcomeOption) ||
+                      (step === 1 && (!data.city.trim() || !data.profession.trim() || !data.ageGroup)) ||
+                      (step === 2 && data.domains.length === 0)
+                    }
+                  >
+                    Continue <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button className="btn btn-primary btn-lg" onClick={handleFinish} id="onboarding-finish">
+                    Go to Dashboard <ArrowRight size={16} />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -114,24 +205,40 @@ export default function OnboardingPage() {
   )
 }
 
-function WelcomeStep({ name }: { name: string }) {
+function WelcomeStep({ 
+  selectedOption, 
+  onSelect 
+}: { 
+  selectedOption: string; 
+  onSelect: (option: string) => void 
+}) {
+  const options = [
+    { id: 'anonymous', icon: '🎭', text: 'Completely anonymous option' },
+    { id: 'private', icon: '🔒', text: 'Private & secure conversations' },
+    { id: 'matching', icon: '🎯', text: 'Personalised mentor matching' },
+  ]
+
   return (
     <div className="ob-step animate-fadeInUp">
       <div className="ob-step__icon">🎉</div>
-      <h2 className="heading-1">Welcome, {name}!</h2>
+      <h2 className="heading-1">Welcome!</h2>
       <p className="body-lg text-muted">
         We're excited to have you here. Let's take 2 minutes to personalise your LifeFundies experience so we can connect you with the right mentors and support.
       </p>
       <div className="ob-features">
-        {[
-          { icon: '🎭', text: 'Completely anonymous option' },
-          { icon: '🔒', text: 'Private & secure conversations' },
-          { icon: '🎯', text: 'Personalised mentor matching' },
-        ].map((f, i) => (
-          <div key={i} className="ob-feature">
+        {options.map((f) => (
+          <button 
+            key={f.id}
+            type="button"
+            className={`ob-feature ${selectedOption === f.id ? 'ob-feature--active' : ''}`}
+            onClick={() => onSelect(f.id)}
+          >
             <span>{f.icon}</span>
             <span className="body-sm">{f.text}</span>
-          </div>
+            {selectedOption === f.id && (
+              <Check size={16} style={{ marginLeft: 'auto', color: 'var(--clr-primary)' }} />
+            )}
+          </button>
         ))}
       </div>
     </div>

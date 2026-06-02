@@ -20,6 +20,8 @@ export default function SettingsPage() {
     profession: user?.profession || '',
     ageGroup: user?.ageGroup || '',
     domains: user?.domains || [] as DomainId[],
+    bio: (user as any)?.bio || '',
+    photoURL: user?.photoURL || '',
     emailNotif: true,
     smsNotif: false,
     browserNotif: true,
@@ -61,6 +63,8 @@ export default function SettingsPage() {
         profession: formData.profession,
         ageGroup: formData.ageGroup,
         domains: formData.domains,
+        bio: formData.bio,
+        photoURL: formData.photoURL,
       }
 
       await updateDoc(userRef, updateData)
@@ -171,6 +175,18 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="form-group">
+                      <label className="form-label" htmlFor="settings-photo">Profile Photo URL</label>
+                      <input 
+                        id="settings-photo"
+                        type="text" 
+                        className="form-input" 
+                        value={formData.photoURL} 
+                        onChange={e => handleFieldChange('photoURL', e.target.value)} 
+                        placeholder="https://example.com/photo.jpg"
+                      />
+                    </div>
+
+                    <div className="form-group">
                       <label className="form-label">Email Address</label>
                       <input 
                         type="email" 
@@ -191,6 +207,19 @@ export default function SettingsPage() {
                         value={formData.phone} 
                         onChange={e => handleFieldChange('phone', e.target.value)} 
                         placeholder="Enter phone number"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="settings-bio">Bio</label>
+                      <textarea 
+                        id="settings-bio"
+                        className="form-input" 
+                        rows={3}
+                        value={formData.bio} 
+                        onChange={e => handleFieldChange('bio', e.target.value)} 
+                        placeholder="Tell us about yourself..."
+                        style={{ resize: 'vertical' }}
                       />
                     </div>
 
