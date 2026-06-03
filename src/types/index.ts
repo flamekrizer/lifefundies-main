@@ -2,7 +2,45 @@
 
 export type UserRole = 'user' | 'mentor' | 'admin'
 
-export type SessionStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+export type SessionStatus = 'payment_pending' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
+
+export type MentorCategoryId = 'peer-buddy' | 'young-mentor' | 'senior-advisory-group'
+
+export interface MentorCategoryPrice {
+  duration: number
+  price: number
+}
+
+export interface MentorCategory {
+  id: MentorCategoryId
+  label: string
+  prices: MentorCategoryPrice[]
+}
+
+export const MENTOR_CATEGORIES: MentorCategory[] = [
+  {
+    id: 'peer-buddy',
+    label: 'Peer Buddy',
+    prices: [
+      { duration: 30, price: 129 },
+      { duration: 45, price: 149 },
+    ],
+  },
+  {
+    id: 'young-mentor',
+    label: 'Young Mentor',
+    prices: [
+      { duration: 45, price: 199 },
+    ],
+  },
+  {
+    id: 'senior-advisory-group',
+    label: 'Senior Advisory Group',
+    prices: [
+      { duration: 45, price: 299 },
+    ],
+  },
+]
 
 export const LIFE_DOMAINS = [
   { id: 'career', label: 'Career & Purpose', icon: '🎯', color: '#0D7377', description: 'Find your professional direction and calling' },
@@ -39,6 +77,7 @@ export interface User {
   isAnonymous: boolean
   onboardingComplete: boolean
   createdAt: Date
+  bio?: string
   city?: string
   profession?: string
   ageGroup?: string
@@ -63,6 +102,9 @@ export interface Mentor {
   education?: string
   languages: string[]
   isVerified: boolean
+  categories?: MentorCategoryId[]
+  qualification?: string
+  certifications?: string[]
 }
 
 export interface Session {

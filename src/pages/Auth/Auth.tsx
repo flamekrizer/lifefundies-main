@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword } from '../../lib/authService'
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import './Auth.css'
 
 export function LoginPage() {
@@ -205,7 +207,7 @@ export function RegisterPage() {
   const handleGoogleLogin = async () => {
     setLoading(true)
     try {
-      const loggedInUser = await signInWithGoogle(form.role)
+      const loggedInUser = await signInWithGoogle('user')
       setUser(loggedInUser)
       if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -243,7 +245,7 @@ export function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, form.role)
+      const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
       
       setUser(newUser)
       navigate('/onboarding')
@@ -282,14 +284,14 @@ export function RegisterPage() {
           </button>
           <button
             type="button"
-            className={`role-btn ${form.role === 'mentor' ? 'role-btn--active' : ''}`}
+            className="role-btn"
             id="role-mentor"
-            onClick={() => update('role', 'mentor')}
+            onClick={() => navigate('/mentor-register')}
           >
             <span className="role-btn__icon">👨‍💼</span>
             <div>
               <p className="role-btn__label">Mentor</p>
-              <p className="body-sm text-muted">I want to guide others</p>
+              <p className="body-sm text-muted">Apply for mentor approval</p>
             </div>
           </button>
         </div>
@@ -368,6 +370,140 @@ export function RegisterPage() {
         <p className="auth-switch body-sm">
           Already have an account? <Link to="/login" className="auth-switch__link">Sign in</Link>
         </p>
+      </div>
+    </div>
+  )
+}
+
+export function MentorRegisterPage() {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    qualification: '',
+    experience: '',
+    expertise: '',
+    languages: '',
+    bio: '',
+  })
+  const [showPass, setShowPass] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const { user, setUser } = useAuthStore()
+  const navigate = useNavigate()
+
+  const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
+
+  const submitApplication = async (uid: string) => {
+    const payload = {
+      mentorApplicationStatus: 'pending',
+      mentorApplication: {
+        fullName: form.name,
+        phone: form.phone,
+        qualification: form.qualification,
+        experience: form.experience,
+        expertise: form.expertise.split(',').map(item => item.trim()).filter(Boolean),
+        languages: form.languages.split(',').map(item => item.trim()).filter(Boolean),
+        bio: form.bio,
+        submittedAt: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    }
+    await updateDoc(doc(db, 'users', uid), payload)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      let activeUser = user
+      if (!activeUser) {
+        activeUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+        setUser(activeUser)
+      }
+      await submitApplication(activeUser.uid)
+      navigate('/dashboard')
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Failed to submit mentor application')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card auth-card--wide animate-scaleIn">
+        <div className="auth-card__header">
+          <div className="auth-logo">
+            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+          </div>
+          <h1 className="heading-1">Mentor Application</h1>
+          <p className="body-sm text-muted">Applications create a seeker account first. Mentor access starts after manual approval.</p>
+        </div>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {error && <div className="auth-error">{error}</div>}
+          {!user && (
+            <>
+              <div className="auth-form-grid">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="mentor-name">Full Name</label>
+                  <input id="mentor-name" className="form-input" value={form.name} onChange={e => update('name', e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="mentor-phone">Phone Number</label>
+                  <input id="mentor-phone" className="form-input" value={form.phone} onChange={e => update('phone', e.target.value)} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="mentor-email">Email address</label>
+                <input id="mentor-email" type="email" className="form-input" value={form.email} onChange={e => update('email', e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="mentor-password">Password</label>
+                <div className="input-wrapper">
+                  <input id="mentor-password" type={showPass ? 'text' : 'password'} className="form-input input-with-icon-right" value={form.password} onChange={e => update('password', e.target.value)} minLength={8} required />
+                  <button type="button" className="input-toggle" onClick={() => setShowPass(!showPass)} aria-label="Toggle password">
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          <div className="auth-form-grid">
+            <div className="form-group">
+              <label className="form-label" htmlFor="mentor-qualification">Qualification</label>
+              <input id="mentor-qualification" className="form-input" value={form.qualification} onChange={e => update('qualification', e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="mentor-experience">Experience</label>
+              <input id="mentor-experience" className="form-input" value={form.experience} onChange={e => update('experience', e.target.value)} required />
+            </div>
+          </div>
+          <div className="auth-form-grid">
+            <div className="form-group">
+              <label className="form-label" htmlFor="mentor-expertise">Expertise Domains</label>
+              <input id="mentor-expertise" className="form-input" placeholder="Career, Confidence" value={form.expertise} onChange={e => update('expertise', e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="mentor-languages">Languages Known</label>
+              <input id="mentor-languages" className="form-input" placeholder="Hindi, English" value={form.languages} onChange={e => update('languages', e.target.value)} required />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="mentor-bio">Bio / About Me</label>
+            <textarea id="mentor-bio" className="form-input" rows={4} value={form.bio} onChange={e => update('bio', e.target.value)} required />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', padding: '0.875rem' }}>
+            {loading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <>Submit Application <ArrowRight size={16} /></>}
+          </button>
+          <p className="auth-switch body-sm">
+            Already approved? <Link to="/login" className="auth-switch__link">Sign in as mentor</Link>
+          </p>
+        </form>
       </div>
     </div>
   )

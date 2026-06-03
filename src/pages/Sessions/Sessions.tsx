@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom'
 import { Calendar, Clock, BookOpen, Star, MessageSquare, Video, X } from 'lucide-react'
 import { getInitials, MOCK_MENTORS } from '../../utils'
 import { useAuthStore } from '../../stores'
-// @ts-ignore
-import { listenToUserBookings } from '../../lib/bookingService'
-import { doc, updateDoc } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { subscribeToUserBookings } from '../../lib/bookingRepository'
+import { rateSessionAndCreateReview } from '../../lib/communityRepository'
 import VideoRoom from '../../components/VideoRoom'
 import './Sessions.css'
 
@@ -28,15 +26,6 @@ export default function SessionsPage() {
     }
 
     setRatings(prev => ({ ...prev, [bookingId]: ratingValue }))
-    
-    // Update local bookings state
-    setBookings(prev => prev.map(b => {
-      const currentId = b.id || b.bookingId
-      if (currentId === bookingId) {
-        return { ...b, rating: ratingValue }
-      }
-      return b
-    }))
 
     if (bookingId.startsWith('ps')) {
       console.log('Skipping Firestore rating sync for mock past session')
@@ -44,8 +33,7 @@ export default function SessionsPage() {
     }
 
     try {
-      const bookingRef = doc(db, 'bookings', bookingId)
-      await updateDoc(bookingRef, { rating: ratingValue })
+      await rateSessionAndCreateReview(bookingId, ratingValue)
       console.log(`Successfully persisted rating ${ratingValue} for booking ${bookingId}`)
     } catch (err) {
       console.error('Failed to sync rating with Firestore:', err)
@@ -56,7 +44,7 @@ export default function SessionsPage() {
     if (!user?.uid) return
 
     setLoadingBookings(true)
-    const unsubscribe = listenToUserBookings(user.uid, (data: any) => {
+    const unsubscribe = subscribeToUserBookings(user.uid, (data: any) => {
       if (Array.isArray(data)) {
         setBookings(data)
       }
@@ -73,7 +61,8 @@ export default function SessionsPage() {
       return {
         id: b.id || b.bookingId,
         sessionId: b.sessionId || null,
-        mentor: mentor?.displayName || 'LifeFundies Mentor',
+        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         time: b.sessionTime,
@@ -90,7 +79,8 @@ export default function SessionsPage() {
       const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
-        mentor: mentor?.displayName || 'LifeFundies Mentor',
+        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         duration: b.sessionDuration,
@@ -138,14 +128,11 @@ export default function SessionsPage() {
                 <div key={session.id} className="session-detail-card" id={`session-detail-${session.id}`}>
                   <div className="session-detail-card__left">
                     <div className="avatar avatar-xl" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                      {(() => {
-                        const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
-                        return mentor?.photoURL ? (
-                          <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          getInitials(session.mentor)
-                        );
-                      })()}
+                      {session.mentorPhotoURL ? (
+                        <img src={session.mentorPhotoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        getInitials(session.mentor)
+                      )}
                     </div>
                     <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
                       {session.status}
@@ -186,14 +173,11 @@ export default function SessionsPage() {
                 <div key={session.id} className="session-detail-card session-detail-card--past" id={`past-session-${session.id}`}>
                   <div className="session-detail-card__left">
                     <div className="avatar avatar-xl" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                      {(() => {
-                        const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
-                        return mentor?.photoURL ? (
-                          <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          getInitials(session.mentor)
-                        );
-                      })()}
+                      {session.mentorPhotoURL ? (
+                        <img src={session.mentorPhotoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        getInitials(session.mentor)
+                      )}
                     </div>
                     <span className="badge badge-secondary">Completed</span>
                   </div>

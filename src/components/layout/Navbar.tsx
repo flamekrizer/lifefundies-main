@@ -4,8 +4,7 @@ import { Menu, X, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react
 import { useAppStore, useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
 import { logout as firebaseLogout } from '../../lib/authService'
-// @ts-ignore
-import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
+import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/notificationRepository'
 import './Navbar.css'
 
 const NAV_LINKS = [
@@ -150,13 +149,25 @@ export default function Navbar() {
                   aria-expanded={profileOpen}
                   aria-label="Profile menu"
                 >
-                  <div className="avatar avatar-sm">{getInitials(user.displayName)}</div>
+                  <div className="avatar avatar-sm">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt={user.displayName} style={{ borderRadius: '50%', width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      getInitials(user.displayName)
+                    )}
+                  </div>
                   <ChevronDown size={14} className={profileOpen ? 'rotate-180' : ''} />
                 </button>
                 {profileOpen && (
                   <div className="navbar__dropdown">
                     <div className="navbar__dropdown-header">
-                      <div className="avatar avatar-md">{getInitials(user.displayName)}</div>
+                      <div className="avatar avatar-md">
+                        {user.photoURL ? (
+                          <img src={user.photoURL} alt={user.displayName} style={{ borderRadius: '50%', width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          getInitials(user.displayName)
+                        )}
+                      </div>
                       <div>
                         <p className="navbar__dropdown-name">{user.displayName}</p>
                         <p className="navbar__dropdown-role body-sm text-muted">{user.role}</p>

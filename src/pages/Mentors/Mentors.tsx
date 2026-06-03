@@ -3,11 +3,11 @@ import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { Search, Filter, Star, Users, CheckCircle, X, Heart } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
+import { MENTOR_CATEGORIES, getLowestCategoryPrice, normalizeMentorCategories } from '../../lib/pricing'
 import BookingModal from '../../components/BookingModal'
 import { useAuthStore } from '../../stores'
-import { addReview, getMentorReviews } from '../../lib/communityService'
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { addReviewAndUpvoteMentor as addReview, getMentorReviews } from '../../lib/communityRepository'
+import { subscribeToMentors, updateUserMentorInterests } from '../../lib/userRepository'
 import './Mentors.css'
 
 export default function MentorsPage() {
@@ -17,6 +17,10 @@ export default function MentorsPage() {
     (searchParams.get('domain') as DomainId) || ''
   )
   const [priceRange, setPriceRange] = useState<'all' | 'budget' | 'mid' | 'premium'>('all')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [languageFilter, setLanguageFilter] = useState('')
+  const [qualificationFilter, setQualificationFilter] = useState('')
+  const [experienceFilter, setExperienceFilter] = useState<'all' | '0-2' | '3-5' | '6+'>('all')
   const [showFilters, setShowFilters] = useState(false)
   const { id } = useParams()
   const navigate = useNavigate()
@@ -37,43 +41,17 @@ export default function MentorsPage() {
     }
   }, [searchParams])
 
-  // Fetch mentors from Firestore users collection
+  // Fetch mentors from Firestore users collection in real time.
   useEffect(() => {
-    const fetchMentors = async () => {
-      setLoadingMentors(true)
-      try {
-        const usersRef = collection(db, 'users')
-        const q = query(usersRef, where('role', '==', 'mentor'))
-        const snapshot = await getDocs(q)
-        const dbMentors = snapshot.docs.map(doc => ({
-          uid: doc.id,
-          id: doc.id,
-          displayName: doc.data().displayName || 'Mentor',
-          email: doc.data().email || '',
-          photoURL: doc.data().photoURL || '',
-          bio: doc.data().bio || '',
-          domains: doc.data().domains || [],
-          expertise: doc.data().expertise || [],
-          sessionPrice: doc.data().sessionPrice || doc.data().price || 299,
-          rating: doc.data().rating || 5.0,
-          reviewCount: doc.data().reviewCount || 0,
-          totalSessions: doc.data().totalSessions || 0,
-          availability: doc.data().availability || {},
-          yearsOfExperience: doc.data().yearsOfExperience || doc.data().experience || 0,
-          education: doc.data().education || '',
-          languages: doc.data().languages || ['English', 'Hindi'],
-          isVerified: doc.data().isVerified !== undefined ? doc.data().isVerified : true,
-        }))
-        if (dbMentors.length > 0) {
-          setMentors(dbMentors)
-        }
-      } catch (err) {
-        console.error('Failed to fetch mentors from Firestore:', err)
-      } finally {
-        setLoadingMentors(false)
+    setLoadingMentors(true)
+    const unsubscribe = subscribeToMentors((dbMentors) => {
+      if (dbMentors.length > 0) {
+        setMentors(dbMentors.map(m => ({ ...m, id: m.uid })))
       }
-    }
-    fetchMentors()
+      setLoadingMentors(false)
+    })
+
+    return () => unsubscribe()
   }, [])
 
   const handleToggleInterest = async (mentorId: string) => {
@@ -89,8 +67,7 @@ export default function MentorsPage() {
     setUser({ ...user, mentorInterests: updatedInterests })
 
     try {
-      const userRef = doc(db, 'users', user.uid)
-      await updateDoc(userRef, { mentorInterests: updatedInterests })
+      await updateUserMentorInterests(user.uid, updatedInterests)
     } catch (err) {
       console.error('Failed to update mentor interests:', err)
     }
@@ -117,16 +94,27 @@ export default function MentorsPage() {
     const bio = m.bio || ''
     const expertise = m.expertise || []
     const domains = m.domains || []
+    const categories = normalizeMentorCategories(m.categories)
+    const languages = m.languages || []
+    const qualification = m.qualification || m.education || ''
+    const yearsOfExperience = Number(m.yearsOfExperience || 0)
     const sessionPrice = m.sessionPrice || m.price || 299
 
     const matchSearch = !search || displayName.toLowerCase().includes(search.toLowerCase()) ||
       bio.toLowerCase().includes(search.toLowerCase()) || expertise.some((e: string) => e.toLowerCase().includes(search.toLowerCase()))
     const matchDomain = !selectedDomain || domains.includes(selectedDomain)
+    const matchCategory = !selectedCategory || categories.includes(selectedCategory as any)
+    const matchLanguage = !languageFilter || languages.some((l: string) => l.toLowerCase().includes(languageFilter.toLowerCase()))
+    const matchQualification = !qualificationFilter || qualification.toLowerCase().includes(qualificationFilter.toLowerCase())
+    const matchExperience = experienceFilter === 'all' ||
+      (experienceFilter === '0-2' && yearsOfExperience <= 2) ||
+      (experienceFilter === '3-5' && yearsOfExperience >= 3 && yearsOfExperience <= 5) ||
+      (experienceFilter === '6+' && yearsOfExperience >= 6)
     const matchPrice = priceRange === 'all' ||
-      (priceRange === 'budget' && sessionPrice <= 299) ||
-      (priceRange === 'mid' && sessionPrice > 299 && sessionPrice <= 349) ||
-      (priceRange === 'premium' && sessionPrice > 349)
-    return matchSearch && matchDomain && matchPrice
+      (priceRange === 'budget' && sessionPrice <= 149) ||
+      (priceRange === 'mid' && sessionPrice > 149 && sessionPrice <= 199) ||
+      (priceRange === 'premium' && sessionPrice > 199)
+    return matchSearch && matchDomain && matchCategory && matchLanguage && matchQualification && matchExperience && matchPrice
   })
 
   return (
@@ -200,9 +188,9 @@ export default function MentorsPage() {
                 <div className="mentors-filters__chips">
                   {[
                     { id: 'all', label: 'All Prices' },
-                    { id: 'budget', label: '₹299' },
-                    { id: 'mid', label: '₹300–₹349' },
-                    { id: 'premium', label: '₹350+' },
+                    { id: 'budget', label: 'Up to Rs 149' },
+                    { id: 'mid', label: 'Rs 150-Rs 199' },
+                    { id: 'premium', label: 'Rs 200+' },
                   ].map(p => (
                     <button
                       key={p.id}
@@ -211,6 +199,42 @@ export default function MentorsPage() {
                       id={`price-filter-${p.id}`}
                     >
                       {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Category Type</label>
+                <div className="mentors-filters__chips">
+                  <button className={`ob-chip ${!selectedCategory ? 'ob-chip--active' : ''}`} onClick={() => setSelectedCategory('')}>All Categories</button>
+                  {MENTOR_CATEGORIES.map(category => (
+                    <button key={category.id} className={`ob-chip ${selectedCategory === category.id ? 'ob-chip--active' : ''}`} onClick={() => setSelectedCategory(selectedCategory === category.id ? '' : category.id)}>
+                      {category.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="auth-form-grid">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="language-filter">Languages Known</label>
+                  <input id="language-filter" className="form-input" value={languageFilter} onChange={e => setLanguageFilter(e.target.value)} placeholder="Hindi, English..." />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="qualification-filter">Qualification</label>
+                  <input id="qualification-filter" className="form-input" value={qualificationFilter} onChange={e => setQualificationFilter(e.target.value)} placeholder="MBA, Psychology..." />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Experience</label>
+                <div className="mentors-filters__chips">
+                  {[
+                    { id: 'all', label: 'Any Experience' },
+                    { id: '0-2', label: '0-2 years' },
+                    { id: '3-5', label: '3-5 years' },
+                    { id: '6+', label: '6+ years' },
+                  ].map(item => (
+                    <button key={item.id} className={`ob-chip ${experienceFilter === item.id ? 'ob-chip--active' : ''}`} onClick={() => setExperienceFilter(item.id as typeof experienceFilter)}>
+                      {item.label}
                     </button>
                   ))}
                 </div>

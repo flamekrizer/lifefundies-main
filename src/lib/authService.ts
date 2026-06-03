@@ -9,13 +9,14 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { auth } from './firebase'
 import type { User as UserType } from '../types'
+import { createUserDoc, getUserDoc, subscribeToUserDoc } from './userRepository'
 
 // ── Email/Password Auth ──────────────────────────────────────
 export const signUpWithEmail = async (email: string, password: string, displayName: string, phone: string = '', role: 'user' | 'mentor' = 'user') => {
   try {
+    const safeRole = role === 'mentor' ? 'user' : role
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
 
@@ -26,17 +27,14 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
       displayName,
       email,
       phone,
-      role,
+      role: safeRole,
       domains: [],
       isAnonymous: false,
       onboardingComplete: false,
       createdAt: new Date(),
     }
 
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      ...newUser,
-      createdAt: Timestamp.now(),
-    })
+    await createUserDoc(newUser)
 
     return newUser
   } catch (error: any) {
@@ -50,31 +48,25 @@ export const signInWithEmail = async (email: string, password: string, selectedR
     const userCredential = await signInWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
 
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-    let userData: any
+    let userData = await getUserDoc(firebaseUser.uid)
 
-    if (!userDoc.exists()) {
+    if (!userData) {
       const newUser: UserType = {
         uid: firebaseUser.uid,
         displayName: firebaseUser.displayName || 'User',
         email: firebaseUser.email || email,
         phone: firebaseUser.phoneNumber || '',
-        role: selectedRole || 'user',
+        role: 'user',
         domains: [],
         isAnonymous: false,
         onboardingComplete: false,
         createdAt: new Date(),
       }
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
-        ...newUser,
-        createdAt: Timestamp.now(),
-      })
+      await createUserDoc(newUser)
       userData = newUser
     } else {
-      userData = userDoc.data()
-      if (selectedRole && selectedRole !== userData.role) {
-        await setDoc(doc(db, 'users', firebaseUser.uid), { role: selectedRole }, { merge: true })
-        userData.role = selectedRole
+      if (selectedRole === 'mentor' && userData.role !== 'mentor' && userData.role !== 'admin') {
+        throw new Error('This account is not approved as a mentor yet. Please use seeker login or submit a mentor application.')
       }
     }
 
@@ -87,7 +79,7 @@ export const signInWithEmail = async (email: string, password: string, selectedR
       domains: userData.domains || [],
       isAnonymous: userData.isAnonymous || false,
       onboardingComplete: userData.onboardingComplete || false,
-      createdAt: userData.createdAt?.toDate?.() || userData.createdAt || new Date(),
+      createdAt: userData.createdAt || new Date(),
     }
 
     return loggedInUser
@@ -104,44 +96,26 @@ export const signInWithGoogle = async (role: 'user' | 'mentor' = 'user') => {
     const userCredential = await signInWithPopup(auth, provider)
     const firebaseUser = userCredential.user
 
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-    let loggedInUser: UserType
+    let loggedInUser = await getUserDoc(firebaseUser.uid)
 
-    if (!userDoc.exists()) {
+    if (!loggedInUser) {
       const newUser: UserType = {
         uid: firebaseUser.uid,
         displayName: firebaseUser.displayName || 'Google User',
         email: firebaseUser.email || '',
         phone: firebaseUser.phoneNumber || '',
-        role,
+        role: 'user',
         domains: [],
         isAnonymous: false,
         onboardingComplete: false,
         createdAt: new Date(),
       }
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
-        ...newUser,
-        createdAt: Timestamp.now(),
-      })
-
+      await createUserDoc(newUser)
       loggedInUser = newUser
     } else {
-      const userData = userDoc.data()
-      if (role === 'mentor' && userData.role !== 'mentor') {
-        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'mentor' }, { merge: true })
-        userData.role = 'mentor'
-      }
-      loggedInUser = {
-        uid: firebaseUser.uid,
-        displayName: firebaseUser.displayName || userData.displayName || 'Google User',
-        email: firebaseUser.email || userData.email || '',
-        phone: userData.phone || firebaseUser.phoneNumber || '',
-        role: userData.role || role,
-        domains: userData.domains || [],
-        isAnonymous: userData.isAnonymous || false,
-        onboardingComplete: userData.onboardingComplete || false,
-        createdAt: userData.createdAt?.toDate() || new Date(),
+      if (role === 'mentor' && loggedInUser.role !== 'mentor' && loggedInUser.role !== 'admin') {
+        throw new Error('This account is not approved as a mentor yet. Please use seeker login or submit a mentor application.')
       }
     }
 
@@ -156,23 +130,14 @@ export const signInAnonymously = async () => {
   try {
     const userCredential = await firebaseSignInAnonymously(auth)
     const firebaseUser = userCredential.user
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+    
+    let anonymousUser = await getUserDoc(firebaseUser.uid)
 
-    if (userDoc.exists()) {
-      const userData = userDoc.data()
-      return {
-        uid: firebaseUser.uid,
-        displayName: userData.displayName || 'Anonymous User',
-        email: userData.email || '',
-        role: userData.role || 'user',
-        domains: userData.domains || [],
-        isAnonymous: true,
-        onboardingComplete: userData.onboardingComplete || false,
-        createdAt: userData.createdAt?.toDate() || new Date(),
-      } as UserType
+    if (anonymousUser) {
+      return anonymousUser
     }
 
-    const anonymousUser: UserType = {
+    const newUser: UserType = {
       uid: firebaseUser.uid,
       displayName: 'Anonymous User',
       email: '',
@@ -183,12 +148,8 @@ export const signInAnonymously = async () => {
       createdAt: new Date(),
     }
 
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      ...anonymousUser,
-      createdAt: Timestamp.now(),
-    })
-
-    return anonymousUser
+    await createUserDoc(newUser)
+    return newUser
   } catch (error: any) {
     console.error('Anonymous sign in error:', error)
     throw new Error(error.message || 'Failed to continue anonymously')
@@ -215,15 +176,23 @@ export const resetPassword = async (email: string) => {
   }
 }
 
-// ── Auth State Listener ──────────────────────────────────────
+// ── Auth State Listener (Real-time, multi-tab safe) ──────────────────────────
 export const onAuthStateChange = (callback: (user: UserType | null) => void) => {
-  return onAuthStateChanged(auth, async (firebaseUser) => {
+  let unsubscribeUserDoc: (() => void) | null = null
+
+  const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    // Clean up previous user document listener when auth state changes
+    if (unsubscribeUserDoc) {
+      unsubscribeUserDoc()
+      unsubscribeUserDoc = null
+    }
+
     if (firebaseUser) {
       try {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        let userData: any
+        let userData = await getUserDoc(firebaseUser.uid)
 
-        if (!userDoc.exists()) {
+        if (!userData) {
+          // Create user doc if first login
           const newUser: UserType = {
             uid: firebaseUser.uid,
             displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
@@ -235,33 +204,28 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
             onboardingComplete: false,
             createdAt: new Date(),
           }
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            ...newUser,
-            createdAt: Timestamp.now(),
-          })
-          userData = newUser
-        } else {
-          userData = userDoc.data()
+          await createUserDoc(newUser)
         }
 
-        const user: UserType = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || userData.displayName || 'User',
-          email: firebaseUser.email || userData.email || '',
-          phone: userData.phone || firebaseUser.phoneNumber || '',
-          role: userData.role || 'user',
-          domains: userData.domains || [],
-          isAnonymous: userData.isAnonymous || false,
-          onboardingComplete: userData.onboardingComplete || false,
-          createdAt: userData.createdAt?.toDate?.() || userData.createdAt || new Date(),
-        }
-        callback(user)
+        // Subscribe to real-time user doc updates (role changes, profile edits)
+        unsubscribeUserDoc = subscribeToUserDoc(firebaseUser.uid, (user) => {
+          callback(user)
+        })
       } catch (error) {
         console.error('Error fetching user data:', error)
         callback(null)
       }
     } else {
+      // User signed out — callback(null) clears auth store
       callback(null)
     }
   })
+
+  // Return cleanup function that unsubscribes both listeners
+  return () => {
+    unsubscribeAuth()
+    if (unsubscribeUserDoc) {
+      unsubscribeUserDoc()
+    }
+  }
 }

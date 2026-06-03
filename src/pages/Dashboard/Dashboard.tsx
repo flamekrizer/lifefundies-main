@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Calendar, Clock, Star, TrendingUp, Users, ArrowRight, Bell, BookOpen, Heart, X } from 'lucide-react'
-// @ts-ignore
-import { listenToUserBookings, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/bookingService'
-import { getUserPosts } from '../../lib/communityService'
+import { getUserBookings } from '../../lib/bookingRepository'
+import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/notificationRepository'
+import { getUserPosts } from '../../lib/communityRepository'
+import { subscribeToMentors } from '../../lib/userRepository'
 import { useAuthStore, useAppStore } from '../../stores'
 import { LIFE_DOMAINS } from '../../types'
 import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(false)
   const [userPostsCount, setUserPostsCount] = useState(0)
+  const [recommendedMentors, setRecommendedMentors] = useState<any[]>(MOCK_MENTORS.slice(0, 3))
 
   const { 
     notificationsList, 
@@ -34,19 +36,19 @@ export default function DashboardPage() {
 
 
 
-  // Bookings listener
+  // Bookings fetch (refresh-based, only loads when screen is refreshed)
   useEffect(() => {
     if (!user?.uid) return
 
     setLoadingBookings(true)
-    const unsubscribe = listenToUserBookings(user.uid, (data: any) => {
-      if (Array.isArray(data)) {
-        setBookings(data)
-      }
-      setLoadingBookings(false)
-    })
-
-    return () => unsubscribe()
+    getUserBookings(user.uid)
+      .then((data: any) => {
+        if (Array.isArray(data)) {
+          setBookings(data)
+        }
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingBookings(false))
   }, [user?.uid])
 
   // Community posts count fetch
@@ -61,6 +63,22 @@ export default function DashboardPage() {
         })
     }
   }, [user?.uid])
+
+  // Mentors list subscription for recommendations
+  useEffect(() => {
+    const unsubscribe = subscribeToMentors((allMentors) => {
+      if (allMentors.length > 0) {
+        const userD = user?.domains || []
+        const sorted = [...allMentors].sort((a, b) => {
+          const aMatch = (a.domains || []).filter(d => userD.includes(d)).length
+          const bMatch = (b.domains || []).filter(d => userD.includes(d)).length
+          return bMatch - aMatch
+        })
+        setRecommendedMentors(sorted.slice(0, 3))
+      }
+    })
+    return () => unsubscribe()
+  }, [user?.domains])
 
   const unreadCount = notificationsList.filter(n => !n.isRead).length
 
@@ -118,7 +136,8 @@ export default function DashboardPage() {
       return {
         id: b.id || b.bookingId,
         sessionId: b.sessionId || null,
-        mentor: mentor?.displayName || 'LifeFundies Mentor',
+        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         time: b.sessionTime,
@@ -303,14 +322,11 @@ export default function DashboardPage() {
                       return (
                         <div key={session.id} className="session-card" id={`session-${session.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                            {(() => {
-                              const mentor = MOCK_MENTORS.find(m => m.displayName === session.mentor);
-                              return mentor?.photoURL ? (
-                                <img src={mentor.photoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                getInitials(session.mentor)
-                              );
-                            })()}
+                            {session.mentorPhotoURL ? (
+                              <img src={session.mentorPhotoURL} alt={session.mentor} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              getInitials(session.mentor)
+                            )}
                           </div>
                           <div className="session-card__info">
                             <p className="session-card__mentor">{session.mentor}</p>
@@ -355,7 +371,7 @@ export default function DashboardPage() {
                   <Link to="/mentors" className="btn btn-ghost btn-sm">See all</Link>
                 </div>
                 <div className="dashboard__mentor-list">
-                  {MOCK_MENTORS.slice(0, 3).map((mentor, i) => (
+                  {recommendedMentors.map((mentor, i) => (
                     <div key={mentor.uid} className="dashboard__mentor-card" id={`rec-mentor-${mentor.uid}`}>
                       <div className="avatar avatar-lg" style={{ background: `hsl(${i * 80 + 40}, 60%, 40%)`, overflow: 'hidden' }}>
                         {mentor.photoURL ? (
@@ -367,7 +383,7 @@ export default function DashboardPage() {
                       <div className="dashboard__mentor-info">
                         <p className="dashboard__mentor-name">{mentor.displayName}</p>
                         <div className="flex gap-2">
-                          {mentor.domains.slice(0, 2).map(d => {
+                          {mentor.domains.slice(0, 2).map((d: any) => {
                             const domain = LIFE_DOMAINS.find(x => x.id === d)
                             return domain ? <span key={d} className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{domain.icon} {domain.label}</span> : null
                           })}

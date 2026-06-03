@@ -3,7 +3,7 @@ import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, 
 import { LIFE_DOMAINS } from '../../types'
 import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
-import { addComment, createPost, getComments, getPosts, upvoteComment, upvotePost } from '../../lib/communityService'
+import { addComment, createPost, getComments, getPosts, upvoteComment, upvotePost } from '../../lib/communityRepository'
 import type { Comment, Post } from '../../types'
 import './Community.css'
 

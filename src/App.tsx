@@ -16,8 +16,7 @@ import { useAuthStore, useAppStore } from './stores'
 import AuthModal from './components/AuthModal'
 import FAQPage from './pages/FAQ/FAQ'
 import { onAuthStateChange } from './lib/authService'
-// @ts-ignore
-import { listenToUserNotifications } from './lib/bookingService'
+import { subscribeToUserNotifications } from './lib/notificationRepository'
 import Preloader from './components/Preloader'
 import ContactPage from './pages/Contact/Contact'
 import ScrollToHash from './components/layout/ScrollToHash'
@@ -71,7 +70,7 @@ export default function App() {
     let unsubscribeNotifs: (() => void) | null = null
 
     if (user?.uid) {
-      unsubscribeNotifs = listenToUserNotifications(user.uid, (data: any) => {
+      unsubscribeNotifs = subscribeToUserNotifications(user.uid, (data: any) => {
         const formatted = data.map((n: any) => ({
           id: n.id,
           text: `${n.title || 'Notification'}${n.body ? `: ${n.body}` : ''}`,

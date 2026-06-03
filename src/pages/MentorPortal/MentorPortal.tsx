@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react'
-import { Calendar as CalendarIcon, Clock, Users, Star, XCircle, Edit3, Trash2, Video } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Users, Star, XCircle, Edit3, Trash2, Video, Save } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
-// @ts-ignore
-import { getGuideAllBookings, acceptBookingRequest, declineBookingRequest, createGuideSlot, deleteGuideSlot, completeBookingSession } from '../../lib/bookingService'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { 
+  acceptBookingRequest, 
+  declineBookingRequest, 
+  createGuideSlot, 
+  deleteGuideSlot, 
+  completeBookingSession, 
+  getGuideBookings,
+  getGuideSlotsAll,
+  getSessionsForGuide
+} from '../../lib/bookingRepository'
+import { updateMentorProfile } from '../../lib/userRepository'
+import { MENTOR_CATEGORIES, getCategoryPrices, getSessionPrice, normalizeMentorCategories } from '../../lib/pricing'
 import VideoRoom from '../../components/VideoRoom'
 import './MentorPortal.css'
 
 export default function MentorPortalPage() {
   const { user } = useAuthStore()
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'calendar' | 'earnings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'calendar' | 'earnings' | 'profile'>('overview')
   const [bookings, setBookings] = useState<any[]>([])
   const [slots, setSlots] = useState<any[]>([])
   const [sessions, setSessions] = useState<any[]>([])
@@ -24,90 +32,75 @@ export default function MentorPortalPage() {
   // Slot management form state
   const [newSlotDate, setNewSlotDate] = useState('')
   const [newSlotTime, setNewSlotTime] = useState('10:00')
-  const [newSlotDuration, setNewSlotDuration] = useState(60)
+  const [newSlotDuration, setNewSlotDuration] = useState(30)
+  const [newSlotCategory, setNewSlotCategory] = useState('peer-buddy')
   const [creatingSlot, setCreatingSlot] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState({
+    photoURL: '',
+    fullName: '',
+    displayName: '',
+    bio: '',
+    qualification: '',
+    experience: '',
+    languages: '',
+    expertise: '',
+    certifications: '',
+    categories: ['peer-buddy'] as string[],
+  })
   
   // Video room state
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
-  // 1. Subscribe to Bookings in real-time
   useEffect(() => {
+    if (!user) return
+    setProfileForm({
+      photoURL: (user as any).photoURL || '',
+      fullName: (user as any).fullName || user.displayName || '',
+      displayName: user.displayName || '',
+      bio: (user as any).bio || '',
+      qualification: (user as any).qualification || (user as any).education || '',
+      experience: String((user as any).experience || (user as any).yearsOfExperience || ''),
+      languages: ((user as any).languages || (user as any).languagesKnown || []).join(', '),
+      expertise: ((user as any).expertise || (user as any).expertiseDomains || []).join(', '),
+      certifications: ((user as any).certifications || []).join(', '),
+      categories: normalizeMentorCategories((user as any).categories),
+    })
+  }, [user])
+
+ 
+  const fetchPortalData = async () => {
     if (!user?.uid) return
-
-    const bookingsRef = collection(db, 'bookings')
-    const q = query(bookingsRef, where('guideId', '==', user.uid))
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a: any, b: any) => {
-        const t1 = a.createdAt?.toDate?.() || a.createdAt || new Date(0)
-        const t2 = b.createdAt?.toDate?.() || b.createdAt || new Date(0)
-        return t2 - t1 // descending
-      })
-      setBookings(list)
+    try {
+      setLoadingBookings(true)
+      setLoadingSlots(true)
+      const [bookingsData, slotsData, sessionsData] = await Promise.all([
+        getGuideBookings(user.uid),
+        getGuideSlotsAll(user.uid),
+        getSessionsForGuide(user.uid)
+      ])
+      setBookings(bookingsData)
+      setSlots(slotsData)
+      setSessions(sessionsData)
+    } catch (err) {
+      console.error('Error fetching portal data:', err)
+    } finally {
       setLoadingBookings(false)
-    }, (err) => {
-      console.error("Failed to listen to bookings:", err)
-      setLoadingBookings(false)
-    })
-
-    return () => unsubscribe()
-  }, [user?.uid])
-
-  // 2. Subscribe to Slots in real-time
-  useEffect(() => {
-    if (!user?.uid) return
-
-    const slotsRef = collection(db, 'guide_slots')
-    const q = query(slotsRef, where('guideId', '==', user.uid))
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a: any, b: any) => {
-        const keyA = `${a.date || ''} ${a.time || ''}`
-        const keyB = `${b.date || ''} ${b.time || ''}`
-        return keyA.localeCompare(keyB) // ascending by date/time
-      })
-      setSlots(list)
       setLoadingSlots(false)
-    }, (err) => {
-      console.error("Failed to listen to slots:", err)
-      setLoadingSlots(false)
-    })
+    }
+  }
 
-    return () => unsubscribe()
-  }, [user?.uid])
-
-  // 3. Subscribe to Sessions in real-time
   useEffect(() => {
-    if (!user?.uid) return
-
-    const sessionsRef = collection(db, 'sessions')
-    const q = query(sessionsRef, where('guideId', '==', user.uid))
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setSessions(list)
-    }, (err) => {
-      console.error("Failed to listen to sessions:", err)
-    })
-
-    return () => unsubscribe()
+    fetchPortalData()
   }, [user?.uid])
 
-  // ── Actions ──────────────────────────────────────────
+
   
   const handleAcceptRequest = async (bookingId: string) => {
     setActionLoading(bookingId)
     try {
       await acceptBookingRequest(bookingId)
+      await fetchPortalData()
     } catch (err) {
       console.error('Failed to accept request:', err)
       alert('Failed to accept booking request.')
@@ -120,6 +113,7 @@ export default function MentorPortalPage() {
     setActionLoading(bookingId)
     try {
       await declineBookingRequest(bookingId)
+      await fetchPortalData()
     } catch (err) {
       console.error('Failed to decline request:', err)
       alert('Failed to decline booking request.')
@@ -133,6 +127,7 @@ export default function MentorPortalPage() {
     try {
       await completeBookingSession(bookingId, sessionId)
       alert('Session marked as completed successfully!')
+      await fetchPortalData()
     } catch (err) {
       console.error('Failed to complete session:', err)
       alert('Failed to complete session.')
@@ -150,11 +145,14 @@ export default function MentorPortalPage() {
         guideId: user.uid,
         date: newSlotDate,
         time: newSlotTime,
-        duration: newSlotDuration
+        duration: newSlotDuration,
+        category: newSlotCategory,
+        price: getSessionPrice(newSlotCategory, newSlotDuration)
       })
       // Reset form
       setNewSlotDate('')
       setNewSlotTime('10:00')
+      await fetchPortalData()
     } catch (err) {
       console.error('Failed to create slot:', err)
       alert('Failed to add availability slot.')
@@ -163,10 +161,39 @@ export default function MentorPortalPage() {
     }
   }
 
+  const toggleProfileCategory = (categoryId: string) => {
+    setProfileForm(prev => {
+      const exists = prev.categories.includes(categoryId)
+      const categories = exists ? prev.categories.filter(id => id !== categoryId) : [...prev.categories, categoryId]
+      return { ...prev, categories }
+    })
+  }
+
+  const handleSaveProfile = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!user?.uid) return
+    if (profileForm.categories.length === 0) {
+      alert('Select at least one mentor category.')
+      return
+    }
+
+    setSavingProfile(true)
+    try {
+      await updateMentorProfile(user.uid, profileForm)
+      alert('Mentor profile updated.')
+    } catch (error) {
+      console.error('Failed to save mentor profile:', error)
+      alert('Failed to save mentor profile.')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
   const handleDeleteSlot = async (slotId: string) => {
     if (!window.confirm('Are you sure you want to delete this availability slot?')) return
     try {
       await deleteGuideSlot(slotId)
+      await fetchPortalData()
     } catch (err: any) {
       console.error('Failed to delete slot:', err)
       alert(err.message || 'Failed to delete slot.')
@@ -206,14 +233,14 @@ export default function MentorPortalPage() {
               <h1 className="display-2">Welcome back, <span className="text-gradient">{user?.displayName || 'Mentor'}</span> 👋</h1>
               <p className="text-muted">You have <strong>{pendingRequests.length} pending requests</strong> awaiting your response.</p>
             </div>
-            <button className="btn btn-outline" id="edit-profile-btn" onClick={() => alert("Profile editing will be connected by your senior developer.")}>
+            <button className="btn btn-outline" id="edit-profile-btn" onClick={() => setActiveTab('profile')}>
               <Edit3 size={16} /> Manage Profile
             </button>
           </div>
 
           {/* Tabs */}
           <div className="mentor-portal__tabs animate-fadeInUp">
-            {(['overview', 'requests', 'calendar', 'earnings'] as const).map(tab => (
+            {(['overview', 'requests', 'calendar', 'earnings', 'profile'] as const).map(tab => (
               <button
                 key={tab}
                 className={`community__tab ${activeTab === tab ? 'community__tab--active' : ''}`}
@@ -254,11 +281,15 @@ export default function MentorPortalPage() {
                     ) : pendingRequests.length > 0 ? (
                       pendingRequests.map(req => (
                         <div key={req.id} className="request-card" id={`request-${req.id}`}>
-                          <div className="avatar avatar-md" style={{ background: 'var(--clr-primary)' }}>
-                            {getInitials(req.userId.substring(0, 5))}
+                          <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                            {req.clientPhotoURL ? (
+                              <img src={req.clientPhotoURL} alt={req.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              getInitials(req.clientName || 'Client')
+                            )}
                           </div>
                           <div className="request-card__info">
-                            <p className="request-card__user">Client (ID: {req.userId.substring(0, 6)})</p>
+                            <p className="request-card__user">{req.clientName || `Client (${req.userId.substring(0, 6)})`}</p>
                             <div className="flex gap-3">
                               <span className="body-sm text-muted">{req.domain}</span>
                               <span className="body-sm text-muted"><Clock size={12} style={{ display: 'inline' }} /> {req.sessionDate}, {req.sessionTime}</span>
@@ -304,11 +335,15 @@ export default function MentorPortalPage() {
                     ) : upcomingSessions.length > 0 ? (
                       upcomingSessions.map(session => (
                         <div key={session.id} className="request-card" id={`upcoming-${session.id}`}>
-                          <div className="avatar avatar-md" style={{ background: 'var(--clr-secondary)' }}>
-                            {getInitials(session.userId.substring(0, 5))}
+                          <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                            {session.clientPhotoURL ? (
+                              <img src={session.clientPhotoURL} alt={session.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              getInitials(session.clientName || 'Client')
+                            )}
                           </div>
                           <div className="request-card__info">
-                            <p className="request-card__user">Client (ID: {session.userId.substring(0, 6)})</p>
+                            <p className="request-card__user">{session.clientName || `Client (${session.userId.substring(0, 6)})`}</p>
                             <div className="flex gap-3">
                               <span className="body-sm text-muted">{session.domain}</span>
                               <span className="body-sm text-muted"><Clock size={12} style={{ display: 'inline' }} /> {session.sessionDate}, {session.sessionTime}</span>
@@ -352,11 +387,15 @@ export default function MentorPortalPage() {
                 ) : bookings.length > 0 ? (
                   bookings.map(req => (
                     <div key={req.id} className="request-card" id={`req-all-${req.id}`}>
-                      <div className="avatar avatar-md" style={{ background: 'var(--clr-primary)' }}>
-                        {getInitials(req.userId.substring(0, 5))}
+                      <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
+                        {req.clientPhotoURL ? (
+                          <img src={req.clientPhotoURL} alt={req.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          getInitials(req.clientName || 'Client')
+                        )}
                       </div>
                       <div className="request-card__info">
-                        <p className="request-card__user">Client (ID: {req.userId.substring(0, 6)})</p>
+                        <p className="request-card__user">{req.clientName || `Client (${req.userId.substring(0, 6)})`}</p>
                         <div className="flex gap-3">
                           <span className="body-sm text-muted">{req.domain}</span>
                           <span className="body-sm text-muted">{req.sessionDate}, {req.sessionTime}</span>
@@ -398,12 +437,28 @@ export default function MentorPortalPage() {
                   <input type="time" className="form-input" value={newSlotTime} onChange={e => setNewSlotTime(e.target.value)} required />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Category</label>
+                  <select
+                    className="form-input"
+                    value={newSlotCategory}
+                    onChange={e => {
+                      const categoryId = e.target.value
+                      setNewSlotCategory(categoryId)
+                      setNewSlotDuration(getCategoryPrices(categoryId)[0].duration)
+                    }}
+                  >
+                    {normalizeMentorCategories((user as any)?.categories).map(categoryId => {
+                      const category = MENTOR_CATEGORIES.find(item => item.id === categoryId)
+                      return category ? <option key={category.id} value={category.id}>{category.label}</option> : null
+                    })}
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Duration (mins)</label>
                   <select className="form-input" value={newSlotDuration} onChange={e => setNewSlotDuration(Number(e.target.value))}>
-                    <option value={30}>30 mins</option>
-                    <option value={45}>45 mins</option>
-                    <option value={60}>60 mins</option>
-                    <option value={90}>90 mins</option>
+                    {getCategoryPrices(newSlotCategory).map(option => (
+                      <option key={option.duration} value={option.duration}>{option.duration} mins - Rs {option.price}</option>
+                    ))}
                   </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -486,7 +541,7 @@ export default function MentorPortalPage() {
                     <div key={b.id} className="request-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <p style={{ fontWeight: 600 }}>{b.domain}</p>
-                        <p className="body-sm text-muted">Client: ID {b.userId.substring(0, 6)} · Date: {b.sessionDate}</p>
+                        <p className="body-sm text-muted">Client: {b.clientName || `ID ${b.userId.substring(0, 6)}`} · Date: {b.sessionDate}</p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <span className={`badge ${b.status === 'completed' ? 'badge-primary' : 'badge-secondary'}`} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
@@ -499,6 +554,75 @@ export default function MentorPortalPage() {
                   <p className="text-center text-muted" style={{ padding: '2rem 0' }}>No payment transactions found.</p>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="portal-section animate-fadeInUp" style={{ marginTop: 'var(--sp-6)' }}>
+              <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
+                <h2 className="heading-2">Manage Profile</h2>
+                <span className="badge badge-primary">Real-time Firebase profile</span>
+              </div>
+              <form onSubmit={handleSaveProfile} className="flex-col gap-4">
+                <div className="auth-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-photo">Profile Photo URL</label>
+                    <input id="profile-photo" className="form-input" value={profileForm.photoURL} onChange={e => setProfileForm(prev => ({ ...prev, photoURL: e.target.value }))} placeholder={(user as any)?.photoURL || 'Google profile image is used by default'} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-full-name">Full Name</label>
+                    <input id="profile-full-name" className="form-input" value={profileForm.fullName} onChange={e => setProfileForm(prev => ({ ...prev, fullName: e.target.value }))} required />
+                  </div>
+                </div>
+                <div className="auth-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-display-name">Display Name</label>
+                    <input id="profile-display-name" className="form-input" value={profileForm.displayName} onChange={e => setProfileForm(prev => ({ ...prev, displayName: e.target.value }))} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-qualification">Qualification</label>
+                    <input id="profile-qualification" className="form-input" value={profileForm.qualification} onChange={e => setProfileForm(prev => ({ ...prev, qualification: e.target.value }))} required />
+                  </div>
+                </div>
+                <div className="auth-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-experience">Experience (years)</label>
+                    <input id="profile-experience" type="number" min="0" className="form-input" value={profileForm.experience} onChange={e => setProfileForm(prev => ({ ...prev, experience: e.target.value }))} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-languages">Languages Known</label>
+                    <input id="profile-languages" className="form-input" value={profileForm.languages} onChange={e => setProfileForm(prev => ({ ...prev, languages: e.target.value }))} placeholder="Hindi, English" required />
+                  </div>
+                </div>
+                <div className="auth-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-expertise">Expertise Domains</label>
+                    <input id="profile-expertise" className="form-input" value={profileForm.expertise} onChange={e => setProfileForm(prev => ({ ...prev, expertise: e.target.value }))} placeholder="Career, Confidence" required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-certifications">Certifications</label>
+                    <input id="profile-certifications" className="form-input" value={profileForm.certifications} onChange={e => setProfileForm(prev => ({ ...prev, certifications: e.target.value }))} placeholder="Certification names, separated by commas" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-bio">Bio / About Me</label>
+                  <textarea id="profile-bio" className="form-input" rows={4} value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Mentor Categories</label>
+                  <div className="mentors-filters__chips">
+                    {MENTOR_CATEGORIES.map(category => (
+                      <button type="button" key={category.id} className={`ob-chip ${profileForm.categories.includes(category.id) ? 'ob-chip--active' : ''}`} onClick={() => toggleProfileCategory(category.id)}>
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="body-sm text-muted">Select at least one category. These categories control booking prices and available slot durations.</p>
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={savingProfile} style={{ alignSelf: 'flex-start' }}>
+                  <Save size={16} /> {savingProfile ? 'Saving...' : 'Save Profile'}
+                </button>
+              </form>
             </div>
           )}
         </div>

@@ -19,7 +19,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
   setLoading: (loading) => set({ loading }),
   setAuthModalOpen: (authModalOpen) => set({ authModalOpen }),
-  logout: () => set({ user: null }),
+  logout: () => {
+    set({ user: null })
+    // Also clear app store notifications on logout
+    useAppStore.getState().setNotificationsList([])
+    useAppStore.getState().setSessions([])
+  },
 }))
 
 // ── App Store ──────────────────────────────────────

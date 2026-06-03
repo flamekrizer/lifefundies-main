@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, IndianRupee, Check } from 'lucide-react';
-// @ts-ignore
-import { getGuideSlots } from '@/lib/bookingService';
+import { getGuideSlots } from '@/lib/bookingRepository';
 
 interface Slot {
   id: string;

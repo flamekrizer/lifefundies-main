@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { X, Phone, Video, MessageSquare, IndianRupee, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, IndianRupee, Loader2, CheckCircle2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import SlotSelection from './SlotSelection';
 import { useAuthStore } from '@/stores';
 import { LIFE_DOMAINS, type DomainId, type Mentor } from '@/types';
+import { MENTOR_CATEGORIES, getCategoryPrices, getSessionPrice, normalizeMentorCategories } from '@/lib/pricing';
 import { initiateRazorpayPayment } from '@/lib/razorpay';
-// @ts-ignore
-import { createBooking, confirmPayment } from '@/lib/bookingService';
+import { createBooking, confirmPayment } from '@/lib/bookingRepository';
 import './BookingModal.css';
 
 interface BookingModalProps {
@@ -19,10 +19,12 @@ interface BookingModalProps {
 export default function BookingModal({ guide, isOpen, onClose, onSuccess }: BookingModalProps) {
   const { user, setAuthModalOpen } = useAuthStore();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Domain & Mode, 2: Slot, 3: Confirm, 4: Success
+  const [step, setStep] = useState(1); // 1: Domain & Category, 2: Slot, 3: Confirm, 4: Success
   const [selectedDomain, setSelectedDomain] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
-  const [selectedMode, setSelectedMode] = useState('video'); // video, audio, chat
+  const mentorCategories = normalizeMentorCategories(guide.categories);
+  const [selectedCategory, setSelectedCategory] = useState(mentorCategories[0]);
+  const [selectedDuration, setSelectedDuration] = useState(getCategoryPrices(mentorCategories[0])[0].duration);
   const [issue, setIssue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +39,6 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
   // Adapt guide properties dynamically to support both Firestore schema and Mock schema
   const mentorId = guide.uid || guide.id;
   const mentorName = guide.displayName || guide.name || 'Mentor';
-  const mentorPrice = guide.sessionPrice || guide.price || 399;
   const rawDomains = guide.domains || [];
 
   // Map domains to LIFE_DOMAINS objects
@@ -52,13 +53,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
     ld => !mappedDomains.some((md: any) => md.id === ld.id)
   );
 
-  const modes = [
-    { id: 'video', name: 'Video Call', icon: Video, price: mentorPrice },
-    { id: 'audio', name: 'Audio Call', icon: Phone, price: Math.round(mentorPrice * 0.8) },
-    { id: 'chat', name: 'Chat Support', icon: MessageSquare, price: Math.round(mentorPrice * 0.6) },
-  ];
-
-  const activeModePrice = modes.find(m => m.id === selectedMode)?.price || mentorPrice;
+  const activeCategory = MENTOR_CATEGORIES.find(category => category.id === selectedCategory) || MENTOR_CATEGORIES[0];
+  const activeCategoryPriceOptions = getCategoryPrices(selectedCategory);
+  const activeSessionPrice = getSessionPrice(selectedCategory, selectedDuration);
 
 
   const handleDomainSelect = (domain: any) => {
@@ -92,8 +89,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
         guideId: mentorId,
         slotId: selectedSlot.id,
         domain: selectedDomain?.label || selectedDomain?.name || 'General Life Guidance',
-        price: activeModePrice,
-        mode: selectedMode,
+        price: activeSessionPrice,
+        category: selectedCategory,
+        duration: selectedDuration,
         selectedIssue: issue || 'Not specified',
         userNotes: issue || 'Not specified',
       });
@@ -104,7 +102,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
       // 2. Launch Razorpay payment checkout in test mode
       console.log('Initiating Razorpay checkout...');
       await initiateRazorpayPayment({
-        amount: activeModePrice,
+        amount: activeSessionPrice,
         bookingId: currentBookingId,
         mentorName: mentorName,
         userDetails: {
@@ -153,7 +151,8 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
     setStep(1);
     setSelectedDomain(null);
     setSelectedSlot(null);
-    setSelectedMode('video');
+    setSelectedCategory(mentorCategories[0]);
+    setSelectedDuration(getCategoryPrices(mentorCategories[0])[0].duration);
     setIssue('');
     setError('');
     setLoading(false);
@@ -213,7 +212,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
         <div className="booking-modal-body">
           {error && <div className="booking-modal-error">{error}</div>}
 
-          {/* STEP 1: Domain & Mode Selection */}
+          {/* STEP 1: Domain & Category Selection */}
           {step === 1 && (
             <div className="booking-modal-flow">
               <div className="booking-modal-section">
@@ -273,24 +272,45 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               </div>
 
               <div className="booking-modal-section" style={{ marginTop: 'var(--sp-6)' }}>
-                <h4 className="booking-modal-section-title">2. Select Consultation Mode</h4>
+                <h4 className="booking-modal-section-title">2. Select Session Category</h4>
                 <div className="booking-mode-list">
-                  {modes.map((mode) => (
+                  {mentorCategories.map((categoryId) => {
+                    const category = MENTOR_CATEGORIES.find(item => item.id === categoryId) || MENTOR_CATEGORIES[0]
+                    return (
                     <button
-                      key={mode.id}
-                      onClick={() => setSelectedMode(mode.id)}
+                      key={category.id}
+                      onClick={() => {
+                        setSelectedCategory(category.id)
+                        setSelectedDuration(category.prices[0].duration)
+                      }}
                       type="button"
                       className={`booking-mode-card ${
-                        selectedMode === mode.id ? 'booking-mode-card--active' : ''
+                        selectedCategory === category.id ? 'booking-mode-card--active' : ''
                       }`}
                     >
                       <div className="booking-mode-card__left">
-                        <mode.icon size={18} />
-                        <span className="booking-mode-card__name">{mode.name}</span>
+                        <span className="booking-mode-card__name">{category.label}</span>
                       </div>
                       <span className="booking-mode-card__price">
-                        <IndianRupee size={14} /> {mode.price}
+                        From <IndianRupee size={14} /> {Math.min(...category.prices.map(price => price.price))}
                       </span>
+                    </button>
+                  )})}
+                </div>
+              </div>
+
+              <div className="booking-modal-section" style={{ marginTop: 'var(--sp-4)' }}>
+                <h4 className="booking-modal-section-title">3. Select Duration</h4>
+                <div className="booking-mode-list">
+                  {activeCategoryPriceOptions.map(option => (
+                    <button
+                      key={option.duration}
+                      onClick={() => setSelectedDuration(option.duration)}
+                      type="button"
+                      className={`booking-mode-card ${selectedDuration === option.duration ? 'booking-mode-card--active' : ''}`}
+                    >
+                      <span className="booking-mode-card__name">{option.duration} Minutes</span>
+                      <span className="booking-mode-card__price"><IndianRupee size={14} /> {option.price}</span>
                     </button>
                   ))}
                 </div>
@@ -326,7 +346,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               
               <SlotSelection
                 guideId={mentorId}
-                guidePrice={activeModePrice}
+                guidePrice={activeSessionPrice}
                 onSlotSelect={handleSlotSelect}
               />
             </div>
@@ -353,10 +373,12 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   <span className="booking-summary-val">{selectedDomain?.label || 'General Life Guidance'}</span>
                 </div>
                 <div className="booking-summary-row">
-                  <span className="text-muted">Session Mode</span>
-                  <span className="booking-summary-val">
-                    {modes.find(m => m.id === selectedMode)?.name}
-                  </span>
+                  <span className="text-muted">Session Category</span>
+                  <span className="booking-summary-val">{activeCategory.label}</span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="text-muted">Duration</span>
+                  <span className="booking-summary-val">{selectedDuration} Minutes</span>
                 </div>
                 <div className="booking-summary-row">
                   <span className="text-muted">Scheduled Time</span>
@@ -368,7 +390,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   <span className="heading-3" style={{ fontWeight: 600 }}>Total Fee</span>
                   <span className="booking-summary-total">
                     <IndianRupee size={20} />
-                    {activeModePrice}
+                    {activeSessionPrice}
                   </span>
                 </div>
               </div>
@@ -412,7 +434,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   🎯 <strong>Topic:</strong> {selectedDomain?.label || 'General Life Guidance'}
                 </p>
                 <p className="body-sm" style={{ marginTop: 'var(--sp-2)' }}>
-                  💬 <strong>Mode:</strong> {modes.find(m => m.id === selectedMode)?.name}
+                  Category: <strong>{activeCategory.label}</strong> ({selectedDuration} Minutes)
                 </p>
                 <p className="body-sm text-muted" style={{ marginTop: 'var(--sp-4)', fontSize: '0.8rem' }}>
                   Booking ID: {bookingId}
