@@ -151,6 +151,7 @@ export default function LandingPage() {
   return (
     <main className="landing">
       <HeroSection />
+      <LogoTrail />
       <StatsBar />
       <DomainsSection />
       <HowItWorksSection />
@@ -159,6 +160,38 @@ export default function LandingPage() {
       <TestimonialsSection />
       <CTASection />
     </main>
+  )
+}
+
+const PARTNER_LOGOS = [
+  { name: 'E-Cell', src: '/e-cell.jpeg' },
+  { name: 'Sharda Launchpad', src: '/sharda-launchpad-logo-png_seeklogo-428241.png' },
+  { name: 'DPIIT', src: '/dpiit.png' },
+  { name: 'MSME', src: '/msme.png' },
+]
+
+function LogoTrail() {
+  const trail = [...PARTNER_LOGOS, ...PARTNER_LOGOS]
+
+  return (
+    <section className="logo-trail" aria-labelledby="logo-trail-title">
+      <div className="container logo-trail__inner">
+        <div className="logo-trail__label">
+          <span className="section-eyebrow">Recognised & Supported By</span>
+          <h2 id="logo-trail-title">Built around India’s startup ecosystem</h2>
+        </div>
+
+        <div className="logo-trail__viewport" aria-label="Partner and recognition logos">
+          <div className="logo-trail__track">
+            {trail.map((logo, index) => (
+              <div className="logo-trail__item" key={`${logo.name}-${index}`}>
+                <img src={logo.src} alt={logo.name} loading="lazy" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
