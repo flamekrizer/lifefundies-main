@@ -1,5 +1,7 @@
 import express from 'express'
+import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import cashfreeCreateOrder from './api/cashfree-create-order.js'
@@ -13,6 +15,39 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const port = process.env.PORT || 3000
 const distDir = path.join(__dirname, 'dist')
+const indexPath = path.join(distDir, 'index.html')
+
+const getReferencedAssets = () => {
+  if (!fs.existsSync(indexPath)) return []
+  const indexHtml = fs.readFileSync(indexPath, 'utf8')
+  return Array.from(indexHtml.matchAll(/\/assets\/[^"')\s<>]+/g), match => match[0])
+}
+
+const hasCompleteBuild = () => {
+  if (!fs.existsSync(indexPath)) return false
+  const assets = getReferencedAssets()
+  return assets.length > 0 && assets.every(assetPath => {
+    const relativeAssetPath = assetPath.replace(/^\//, '')
+    return fs.existsSync(path.join(distDir, relativeAssetPath))
+  })
+}
+
+const ensureBuild = () => {
+  if (hasCompleteBuild()) return
+
+  console.log('Build output missing or incomplete. Running npm run build...')
+  execFileSync('npm', ['run', 'build'], {
+    cwd: __dirname,
+    stdio: 'inherit',
+    env: process.env,
+  })
+
+  if (!hasCompleteBuild()) {
+    throw new Error('Build completed, but dist assets are still missing.')
+  }
+}
+
+ensureBuild()
 
 app.disable('x-powered-by')
 app.set('trust proxy', true)
