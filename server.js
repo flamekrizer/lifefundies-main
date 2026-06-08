@@ -14,8 +14,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const app = express()
 const port = process.env.PORT || 3000
-const distDir = path.join(__dirname, 'dist')
-const indexPath = path.join(distDir, 'index.html')
+const buildDir = path.join(__dirname, process.env.VITE_BUILD_DIR || 'build')
+const indexPath = path.join(buildDir, 'index.html')
 
 const getReferencedAssets = () => {
   if (!fs.existsSync(indexPath)) return []
@@ -28,7 +28,7 @@ const hasCompleteBuild = () => {
   const assets = getReferencedAssets()
   return assets.length > 0 && assets.every(assetPath => {
     const relativeAssetPath = assetPath.replace(/^\//, '')
-    return fs.existsSync(path.join(distDir, relativeAssetPath))
+    return fs.existsSync(path.join(buildDir, relativeAssetPath))
   })
 }
 
@@ -43,7 +43,7 @@ const ensureBuild = () => {
   })
 
   if (!hasCompleteBuild()) {
-    throw new Error('Build completed, but dist assets are still missing.')
+    throw new Error('Build completed, but build assets are still missing.')
   }
 }
 
@@ -65,7 +65,7 @@ app.post('/api/cashfree-webhook', cashfreeWebhook)
 app.post('/api/chat', chatHandler)
 app.get('/api/chat/status', chatStatusHandler)
 
-app.use('/assets', express.static(path.join(distDir, 'assets'), {
+app.use('/assets', express.static(path.join(buildDir, 'assets'), {
   immutable: true,
   maxAge: '1y',
 }))
@@ -74,7 +74,7 @@ app.use('/assets', (_req, res) => {
   res.status(404).type('text/plain').send('Asset not found. Run npm run build before starting the server.')
 })
 
-app.use(express.static(distDir, {
+app.use(express.static(buildDir, {
   extensions: ['html'],
   maxAge: '1y',
   setHeaders: (res, servedPath) => {
@@ -85,7 +85,7 @@ app.use(express.static(distDir, {
 }))
 
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(distDir, 'index.html'))
+  res.sendFile(path.join(buildDir, 'index.html'))
 })
 
 app.listen(port, () => {

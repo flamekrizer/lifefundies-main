@@ -11,7 +11,7 @@ Recommended Hostinger settings:
 - Install command: `npm install`
 - Build command: `npm run build`
 - Start command: `npm start`
-- Output directory: `dist`
+- Output directory: `build`
 - Node version: `20` or `18`
 - Port: use Hostinger's provided `PORT` environment variable
 
@@ -32,7 +32,7 @@ Add these environment variables in Hostinger:
 
 Do not add `VITE_CASHFREE_SECRET_KEY`. Anything prefixed with `VITE_` can be exposed in browser JavaScript.
 
-The Express server runs from `server.js`, serves the built React app from `dist/`, and handles:
+The Express server runs from `server.js`, serves the built React app from `build/`, and handles:
 
 - `/api/cashfree-create-order`
 - `/api/cashfree-verify-order`
@@ -60,8 +60,8 @@ Use this path if you are uploading the React frontend to Hostinger `public_html`
    npm run build
    ```
 
-4. Upload the contents of `dist/` to Hostinger `public_html`.
-   Upload the contents inside `dist`, not the `dist` folder itself.
+4. Upload the contents of `build/` to Hostinger `public_html`.
+   Upload the contents inside `build`, not the `build` folder itself.
 
 5. Confirm these files exist in `public_html`:
    - `index.html`

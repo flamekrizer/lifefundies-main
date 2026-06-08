@@ -1,8 +1,8 @@
 const fs = require('fs')
 const path = require('path')
 
-const distDir = path.join(__dirname, '..', 'dist')
-const indexPath = path.join(distDir, 'index.html')
+const buildDir = path.join(__dirname, '..', process.env.VITE_BUILD_DIR || 'build')
+const indexPath = path.join(buildDir, 'index.html')
 
 const routes = [
   'mentors',
@@ -29,14 +29,14 @@ const routes = [
 ]
 
 if (!fs.existsSync(indexPath)) {
-  console.error('dist/index.html not found. Run vite build first.')
+  console.error(`${path.relative(path.join(__dirname, '..'), indexPath)} not found. Run vite build first.`)
   process.exit(1)
 }
 
 const indexHtml = fs.readFileSync(indexPath)
 
 for (const route of routes) {
-  const routeDir = path.join(distDir, route)
+  const routeDir = path.join(buildDir, route)
   fs.mkdirSync(routeDir, { recursive: true })
   fs.writeFileSync(path.join(routeDir, 'index.html'), indexHtml)
 }
