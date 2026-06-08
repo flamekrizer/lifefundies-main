@@ -30,6 +30,15 @@ app.post('/api/cashfree-webhook', cashfreeWebhook)
 app.post('/api/chat', chatHandler)
 app.get('/api/chat/status', chatStatusHandler)
 
+app.use('/assets', express.static(path.join(distDir, 'assets'), {
+  immutable: true,
+  maxAge: '1y',
+}))
+
+app.use('/assets', (_req, res) => {
+  res.status(404).type('text/plain').send('Asset not found. Run npm run build before starting the server.')
+})
+
 app.use(express.static(distDir, {
   extensions: ['html'],
   maxAge: '1y',
