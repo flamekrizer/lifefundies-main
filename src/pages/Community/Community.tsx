@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X, Loader } from 'lucide-react'
+import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X, Loader, Send } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
@@ -59,6 +59,32 @@ const CHAT_ROOM_GROUPS = [
   },
 ]
 
+interface ChatRoomSelection {
+  groupTitle: string
+  room: string
+}
+
+interface ChatRoomMessage {
+  id: string
+  roomId: string
+  authorId: string
+  authorName: string
+  message: string
+  createdAt: string
+}
+
+const getRoomId = (room: string) =>
+  room.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'general'
+
+const getGuestId = () => {
+  const key = 'lifefundies-chat-guest-id'
+  const existing = window.localStorage.getItem(key)
+  if (existing) return existing
+  const created = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  window.localStorage.setItem(key, created)
+  return created
+}
+
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,11 +93,46 @@ export default function CommunityPage() {
   const [showNewPost, setShowNewPost] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeChatRoom, setActiveChatRoom] = useState<ChatRoomSelection | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatRoomMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatSending, setChatSending] = useState(false)
+  const [chatError, setChatError] = useState('')
   const { user, setAuthModalOpen } = useAuthStore()
 
   useEffect(() => {
     loadPosts()
   }, [])
+
+  useEffect(() => {
+    if (!activeChatRoom) return
+
+    let cancelled = false
+    const loadRoomMessages = async () => {
+      setChatError('')
+      setChatLoading(true)
+      try {
+        const response = await fetch(`/api/chatrooms/${getRoomId(activeChatRoom.room)}/messages`)
+        if (!response.ok) throw new Error(`Chat room unavailable: ${response.status}`)
+        const data = await response.json()
+        if (!cancelled) setChatMessages(Array.isArray(data.messages) ? data.messages : [])
+      } catch (error) {
+        console.error('Failed to load chat room:', error)
+        if (!cancelled) setChatError('Chat room connect nahi ho pa raha. Please refresh karke try karein.')
+      } finally {
+        if (!cancelled) setChatLoading(false)
+      }
+    }
+
+    void loadRoomMessages()
+    const interval = window.setInterval(loadRoomMessages, 4000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [activeChatRoom])
 
   const loadPosts = async () => {
     setLoading(true)
@@ -148,6 +209,46 @@ export default function CommunityPage() {
     return `${Math.floor(h / 24)}d ago`
   }
 
+  const openChatRoom = (groupTitle: string, room: string) => {
+    setActiveChatRoom({ groupTitle, room })
+    setChatMessages([])
+    setChatInput('')
+    setChatError('')
+  }
+
+  const sendChatRoomMessage = async () => {
+    if (!activeChatRoom || !chatInput.trim() || chatSending) return
+
+    const message = chatInput.trim()
+    const authorId = user?.uid || getGuestId()
+    const authorName = user?.displayName || 'Anonymous'
+    setChatInput('')
+    setChatSending(true)
+    setChatError('')
+
+    try {
+      const response = await fetch(`/api/chatrooms/${getRoomId(activeChatRoom.room)}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, authorId, authorName }),
+      })
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '')
+        throw new Error(detail || `Chat send failed: ${response.status}`)
+      }
+
+      const savedMessage = await response.json()
+      setChatMessages(current => [...current, savedMessage])
+    } catch (error) {
+      console.error('Failed to send chat room message:', error)
+      setChatError('Message send nahi hua. Please dobara try karein.')
+      setChatInput(message)
+    } finally {
+      setChatSending(false)
+    }
+  }
+
   return (
     <div className="page-wrapper">
       <div className="community-page">
@@ -215,9 +316,7 @@ export default function CommunityPage() {
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"
-                    onClick={() => {
-                      if (!user) setAuthModalOpen(true)
-                    }}
+                    onClick={() => openChatRoom(CHAT_ROOM_GROUPS[0].title, CHAT_ROOM_GROUPS[0].rooms[0])}
                   >
                     <MessageCircle size={15} /> Start Chatting
                   </button>
@@ -237,13 +336,7 @@ export default function CommunityPage() {
                             key={room}
                             type="button"
                             className="chat-room-pill"
-                            onClick={() => {
-                              if (!user) {
-                                setAuthModalOpen(true)
-                                return
-                              }
-                              setSearchQuery(room)
-                            }}
+                            onClick={() => openChatRoom(group.title, room)}
                           >
                             {room}
                           </button>
@@ -253,6 +346,68 @@ export default function CommunityPage() {
                   ))}
                 </div>
               </section>
+
+              {activeChatRoom && (
+                <section className="chat-room-live" aria-label={`${activeChatRoom.room} chat room`}>
+                  <header className="chat-room-live__header">
+                    <div>
+                      <span className="section-eyebrow">{activeChatRoom.groupTitle}</span>
+                      <h3 className="heading-2">{activeChatRoom.room}</h3>
+                      <p className="body-sm text-muted">Anonymous peer chat. Be kind, avoid personal details, and seek local emergency help if anyone is in immediate danger.</p>
+                    </div>
+                    <button type="button" className="chat-room-live__close" aria-label="Close chat room" onClick={() => setActiveChatRoom(null)}>
+                      <X size={18} />
+                    </button>
+                  </header>
+
+                  <div className="chat-room-live__messages">
+                    {chatLoading && chatMessages.length === 0 ? (
+                      <div className="chat-room-live__state">
+                        <Loader size={18} className="animate-spin" />
+                        Loading room...
+                      </div>
+                    ) : chatMessages.length === 0 ? (
+                      <div className="chat-room-live__state">No messages yet. Start the conversation gently.</div>
+                    ) : (
+                      chatMessages.map(message => {
+                        const isMine = message.authorId === user?.uid || (!user && message.authorId === window.localStorage.getItem('lifefundies-chat-guest-id'))
+                        return (
+                          <article key={message.id} className={`chat-room-live__message ${isMine ? 'chat-room-live__message--mine' : ''}`}>
+                            <div className="chat-room-live__meta">
+                              <span>{message.authorName || 'Anonymous'}</span>
+                              <time>{timeAgo(new Date(message.createdAt))}</time>
+                            </div>
+                            <p>{message.message}</p>
+                          </article>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  {chatError && <p className="chat-room-live__error">{chatError}</p>}
+
+                  <form
+                    className="chat-room-live__form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void sendChatRoomMessage()
+                    }}
+                  >
+                    <input
+                      value={chatInput}
+                      onChange={event => setChatInput(event.target.value)}
+                      placeholder={`Message ${activeChatRoom.room}...`}
+                      maxLength={800}
+                      aria-label="Chat room message"
+                      disabled={chatSending}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={chatSending || !chatInput.trim()}>
+                      {chatSending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
+                      Send
+                    </button>
+                  </form>
+                </section>
+              )}
 
               {/* Posts */}
               <div className="community__posts">

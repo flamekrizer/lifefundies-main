@@ -16,6 +16,7 @@ const app = express()
 const port = process.env.PORT || 3000
 const buildDir = path.join(__dirname, process.env.VITE_BUILD_DIR || 'build')
 const indexPath = path.join(buildDir, 'index.html')
+const chatRooms = new Map()
 
 const getReferencedAssets = () => {
   if (!fs.existsSync(indexPath)) return []
@@ -64,6 +65,53 @@ app.post('/api/cashfree-verify-order', cashfreeVerifyOrder)
 app.post('/api/cashfree-webhook', cashfreeWebhook)
 app.post('/api/chat', chatHandler)
 app.get('/api/chat/status', chatStatusHandler)
+
+const normalizeRoomId = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 80) || 'general'
+
+app.get('/api/chatrooms/:roomId/messages', (req, res) => {
+  const roomId = normalizeRoomId(req.params.roomId)
+  res.status(200).json({
+    roomId,
+    messages: chatRooms.get(roomId) || [],
+  })
+})
+
+app.post('/api/chatrooms/:roomId/messages', (req, res) => {
+  const roomId = normalizeRoomId(req.params.roomId)
+  const message = String(req.body?.message || '').trim()
+  const authorName = String(req.body?.authorName || 'Anonymous').trim().slice(0, 60) || 'Anonymous'
+  const authorId = String(req.body?.authorId || 'guest').trim().slice(0, 120) || 'guest'
+
+  if (!message) {
+    res.status(400).json({ error: 'message is required.' })
+    return
+  }
+
+  if (message.length > 800) {
+    res.status(400).json({ error: 'message must be 800 characters or less.' })
+    return
+  }
+
+  const roomMessages = chatRooms.get(roomId) || []
+  const nextMessage = {
+    id: `${roomId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    roomId,
+    authorId,
+    authorName,
+    message,
+    createdAt: new Date().toISOString(),
+  }
+
+  const nextMessages = [...roomMessages, nextMessage].slice(-120)
+  chatRooms.set(roomId, nextMessages)
+
+  res.status(201).json(nextMessage)
+})
 
 app.use('/assets', express.static(path.join(buildDir, 'assets'), {
   immutable: true,
