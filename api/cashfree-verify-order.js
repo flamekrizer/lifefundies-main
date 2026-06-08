@@ -6,8 +6,8 @@ const getCashfreeBaseUrl = () => {
 }
 
 const getCashfreeCredentials = () => ({
-  appId: process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID,
-  secretKey: process.env.CASHFREE_SECRET_KEY || process.env.VITE_CASHFREE_SECRET_KEY,
+  appId: process.env.CASHFREE_APP_ID,
+  secretKey: process.env.CASHFREE_SECRET_KEY,
 })
 
 export default async function handler(req, res) {
