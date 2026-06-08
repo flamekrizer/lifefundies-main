@@ -13,10 +13,24 @@ import {
   runTransaction,
   writeBatch,
   onSnapshot,
-  Timestamp
+  Timestamp,
+  arrayUnion
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { createNotification } from './notificationRepository'
+
+const getSafeLFID = async (userId: string) => {
+  const fallback = `LF-${userId.slice(0, 6).toUpperCase()}`
+  if (!userId) return fallback
+
+  try {
+    const userSnap = await getDoc(doc(db, 'users', userId))
+    if (!userSnap.exists()) return fallback
+    return userSnap.data().lfId || fallback
+  } catch {
+    return fallback
+  }
+}
 
 /**
  * BookingRepository
@@ -37,10 +51,14 @@ export const getGuideSlots = async (guideId: string, startDate?: string, endDate
       where('isBooked', '==', false)
     )
     const snapshot = await getDocs(q)
-    const slots = snapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    })) as any[]
+    const slots = snapshot.docs.map(docSnap => {
+      const data = docSnap.data()
+      return {
+        id: docSnap.id,
+        ...data,
+        price: data.price ?? 129
+      }
+    }) as any[]
 
     return slots
       .filter(slot => {
@@ -72,10 +90,14 @@ export const subscribeToGuideSlots = (guideId: string, callback: (slots: any[]) 
   const q = query(slotsRef, where('guideId', '==', guideId))
 
   return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    })).sort((a: any, b: any) => {
+    const list = snapshot.docs.map(docSnap => {
+      const data = docSnap.data()
+      return {
+        id: docSnap.id,
+        ...data,
+        price: data.price ?? 129
+      }
+    }).sort((a: any, b: any) => {
       const keyA = `${a.date || ''} ${a.time || ''}`
       const keyB = `${b.date || ''} ${b.time || ''}`
       return keyA.localeCompare(keyB)
@@ -153,11 +175,23 @@ export const createBooking = async (bookingDetails: {
       }
 
       const slotData = slotDoc.data()
+      if (slotData.guideId !== bookingDetails.guideId) {
+        throw new Error('Selected slot does not belong to this guide')
+      }
       if (slotData.isBooked) {
         throw new Error('Slot already booked')
       }
       if (slotData.isBlocked) {
         throw new Error('Slot not available')
+      }
+      if (slotData.isActive === false) {
+        throw new Error('Slot not available')
+      }
+      if (slotData.category && slotData.category !== bookingDetails.category) {
+        throw new Error('Selected slot is not available for this session type')
+      }
+      if (Number(slotData.duration) !== Number(bookingDetails.duration)) {
+        throw new Error('Selected slot duration changed. Please choose another slot.')
       }
 
       const bookingRef = doc(collection(db, 'bookings'))
@@ -167,7 +201,9 @@ export const createBooking = async (bookingDetails: {
         guideId: bookingDetails.guideId,
         slotId: bookingDetails.slotId,
         domain: bookingDetails.domain,
+        category: bookingDetails.category,
         selectedIssue: bookingDetails.selectedIssue || '',
+        issueSummary: bookingDetails.selectedIssue || '',
         userNotes: bookingDetails.userNotes || '',
         price: bookingDetails.price,
         discount: 0,
@@ -178,6 +214,7 @@ export const createBooking = async (bookingDetails: {
         sessionTime: slotData.time,
         sessionDuration: bookingDetails.duration,
         sessionCreated: false,
+        privacyMode: 'lfid_only',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
@@ -187,7 +224,8 @@ export const createBooking = async (bookingDetails: {
         isBooked: true,
         bookedBy: bookingDetails.userId,
         bookingId: bookingRef.id,
-        bookedAt: serverTimestamp()
+        bookedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       })
 
       return bookingData
@@ -217,9 +255,21 @@ export const confirmPayment = async (paymentDetails: {
       }
 
       const bookingData = bookingDoc.data()
+      if (bookingData.status === 'cancelled') {
+        throw new Error('Cannot confirm payment for a cancelled booking')
+      }
+      if (bookingData.paymentStatus === 'completed' && bookingData.status !== 'payment_pending') {
+        return {
+          bookingId: paymentDetails.bookingId,
+          status: bookingData.status || 'pending'
+        }
+      }
 
       transaction.update(bookingRef, {
         paymentId: paymentDetails.paymentId,
+        cashfreeOrderId: paymentDetails.razorpayOrderId,
+        cashfreePaymentId: paymentDetails.razorpayPaymentId,
+        cashfreeTransactionId: paymentDetails.razorpaySignature,
         paymentStatus: 'completed',
         status: 'pending',
         paidAt: serverTimestamp(),
@@ -274,6 +324,55 @@ export const confirmPayment = async (paymentDetails: {
     return result
   } catch (error) {
     console.error('Payment confirmation failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Cancel a pending payment and release the slot
+ * Called when payment fails or is cancelled by user
+ */
+export const cancelPendingBooking = async (bookingId: string) => {
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const bookingRef = doc(db, 'bookings', bookingId)
+      const bookingDoc = await transaction.get(bookingRef)
+
+      if (!bookingDoc.exists()) {
+        throw new Error('Booking not found')
+      }
+
+      const bookingData = bookingDoc.data()
+
+      // Only allow cancellation if payment hasn't been completed
+      if (bookingData.paymentStatus === 'completed') {
+        throw new Error('Cannot cancel a completed booking')
+      }
+
+      // Update booking status to failed
+      transaction.update(bookingRef, {
+        status: 'payment_failed',
+        paymentStatus: 'failed',
+        updatedAt: serverTimestamp()
+      })
+
+      // Release the slot
+      if (bookingData.slotId) {
+        const slotRef = doc(db, 'guide_slots', bookingData.slotId)
+        transaction.update(slotRef, {
+          isBooked: false,
+          bookedBy: null,
+          bookingId: null,
+          releasedAt: serverTimestamp()
+        })
+      }
+
+      return { success: true, bookingId }
+    })
+
+    return result
+  } catch (error) {
+    console.error('Failed to cancel pending booking:', error)
     throw error
   }
 }
@@ -338,27 +437,14 @@ export const subscribeToGuideBookings = (guideId: string, callback: (bookings: a
       const data = docSnap.data()
       const userId = data.userId
 
-      let clientName = `Client (${userId.substring(0, 6)})`
-      let clientPhotoURL = ''
-
-      if (userId) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', userId))
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            clientName = userData.displayName || userData.fullName || clientName
-            clientPhotoURL = userData.photoURL || ''
-          }
-        } catch (e) {
-          console.error('Error fetching user profile in booking join:', e)
-        }
-      }
+      const lfid = await getSafeLFID(userId)
 
       return {
         id: docSnap.id,
         ...data,
-        clientName,
-        clientPhotoURL,
+        lfid,
+        clientName: lfid,
+        clientPhotoURL: '',
         createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
       }
     }))
@@ -426,27 +512,14 @@ export const getGuideBookings = async (guideId: string): Promise<any[]> => {
       const data = docSnap.data()
       const userId = data.userId
 
-      let clientName = `Client (${userId.substring(0, 6)})`
-      let clientPhotoURL = ''
-
-      if (userId) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', userId))
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            clientName = userData.displayName || userData.fullName || clientName
-            clientPhotoURL = userData.photoURL || ''
-          }
-        } catch (e) {
-          console.error('Error fetching user profile in booking join:', e)
-        }
-      }
+      const lfid = await getSafeLFID(userId)
 
       return {
         id: docSnap.id,
         ...data,
-        clientName,
-        clientPhotoURL,
+        lfid,
+        clientName: lfid,
+        clientPhotoURL: '',
         createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
       }
     }))
@@ -463,10 +536,14 @@ export const getGuideSlotsAll = async (guideId: string): Promise<any[]> => {
     const slotsRef = collection(db, 'guide_slots')
     const q = query(slotsRef, where('guideId', '==', guideId))
     const snapshot = await getDocs(q)
-    const list = snapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    })).sort((a: any, b: any) => {
+    const list = snapshot.docs.map(docSnap => {
+      const data = docSnap.data()
+      return {
+        id: docSnap.id,
+        ...data,
+        price: data.price ?? 129
+      }
+    }).sort((a: any, b: any) => {
       const keyA = `${a.date || ''} ${a.time || ''}`
       const keyB = `${b.date || ''} ${b.time || ''}`
       return keyA.localeCompare(keyB)
@@ -506,6 +583,9 @@ export const acceptBookingRequest = async (bookingId: string) => {
         throw new Error('Booking not found')
       }
       const bookingData = bookingDoc.data()
+      if (bookingData.paymentStatus !== 'completed' || bookingData.status !== 'pending') {
+        throw new Error('Only paid pending bookings can be accepted')
+      }
       const existingSessionId = bookingData.sessionId || null
       let sessionId = existingSessionId
 
@@ -528,11 +608,13 @@ export const acceptBookingRequest = async (bookingId: string) => {
           domain: bookingData.domain,
           sessionDate: bookingData.sessionDate || '',
           sessionTime: bookingData.sessionTime || '',
+          lfid: await getSafeLFID(bookingData.userId),
+          querySummary: bookingData.issueSummary || bookingData.userNotes || '',
           scheduledAt: bookingData.sessionDate && bookingData.sessionTime
             ? `${bookingData.sessionDate}T${bookingData.sessionTime}:00`
             : '',
           duration: bookingData.sessionDuration || 60,
-          status: 'upcoming',
+          status: 'confirmed',
           videoRoomId: `lf_room_${sessionRef.id}`,
           chatEnabled: true,
           createdAt: serverTimestamp()
@@ -593,10 +675,14 @@ export const declineBookingRequest = async (bookingId: string) => {
         throw new Error('Booking not found')
       }
       const bookingData = bookingDoc.data()
+      if (bookingData.status !== 'pending') {
+        throw new Error('Only pending booking requests can be declined')
+      }
 
       // Update booking status
       transaction.update(bookingRef, {
         status: 'cancelled',
+        refundStatus: bookingData.paymentStatus === 'completed' ? 'review_required' : null,
         updatedAt: serverTimestamp()
       })
 
@@ -617,7 +703,7 @@ export const declineBookingRequest = async (bookingId: string) => {
         userId: bookingData.userId,
         type: 'booking_declined',
         title: 'Session Declined',
-        body: `Your booking request for ${bookingData.sessionDate || ''} was declined.`,
+        body: `Your booking request for ${bookingData.sessionDate || ''} was declined. Our team will review the payment if a refund is required.`,
         read: false,
         actionUrl: '/dashboard',
         createdAt: serverTimestamp()
@@ -682,18 +768,191 @@ export const cancelBooking = async (bookingId: string, cancelledBy: string) => {
 
 export const completeBookingSession = async (bookingId: string, sessionId: string) => {
   try {
-    const batch = writeBatch(db)
-    const bookingRef = doc(db, 'bookings', bookingId)
-    batch.update(bookingRef, { status: 'completed', updatedAt: serverTimestamp() })
+    const result = await runTransaction(db, async (transaction) => {
+      const bookingRef = doc(db, 'bookings', bookingId)
+      const bookingDoc = await transaction.get(bookingRef)
+      if (!bookingDoc.exists()) {
+        throw new Error('Booking not found')
+      }
 
-    if (sessionId) {
-      const sessionRef = doc(db, 'sessions', sessionId)
-      batch.update(sessionRef, { status: 'completed', endedAt: serverTimestamp() })
-    }
-    await batch.commit()
-    return { success: true }
+      const bookingData = bookingDoc.data()
+      if (bookingData.status !== 'confirmed') {
+        throw new Error('Only confirmed bookings can be completed')
+      }
+
+      const resolvedSessionId = sessionId || bookingData.sessionId
+      transaction.update(bookingRef, { status: 'completed', updatedAt: serverTimestamp() })
+
+      if (resolvedSessionId) {
+        const sessionRef = doc(db, 'sessions', resolvedSessionId)
+        transaction.set(sessionRef, {
+          status: 'completed',
+          endedAt: serverTimestamp()
+        }, { merge: true })
+      }
+
+      return { success: true, sessionId: resolvedSessionId || null }
+    })
+    return result
   } catch (error) {
     console.error('Error completing booking session:', error)
+    throw error
+  }
+}
+
+export const saveGuideSessionNote = async (noteData: {
+  guideId: string
+  userId: string
+  bookingId: string
+  sessionId?: string
+  note: string
+  summary?: string
+}) => {
+  try {
+    const bookingRef = doc(db, 'bookings', noteData.bookingId)
+    const note = {
+      id: `note_${Date.now()}`,
+      guideId: noteData.guideId,
+      userId: noteData.userId,
+      sessionId: noteData.sessionId || '',
+      note: noteData.note,
+      summary: noteData.summary || '',
+      lfid: await getSafeLFID(noteData.userId),
+      isPrivate: true,
+      createdAt: new Date().toISOString(),
+    }
+    await updateDoc(bookingRef, {
+      guidePrivateNotes: arrayUnion(note),
+      updatedAt: serverTimestamp(),
+    })
+    return { id: note.id }
+  } catch (error) {
+    console.error('Error saving guide note:', error)
+    throw error
+  }
+}
+
+export const getGuideNotesForLFID = async (guideId: string, userId: string) => {
+  try {
+    const history = await getGuideSessionHistoryForLFID(guideId, userId)
+    return history.flatMap((booking: any) => (
+      Array.isArray(booking.guidePrivateNotes)
+        ? booking.guidePrivateNotes
+            .filter((note: any) => note.guideId === guideId)
+            .map((note: any) => ({
+              ...note,
+              bookingId: booking.id,
+              createdAt: note.createdAt ? new Date(note.createdAt) : null,
+            }))
+        : []
+    )).sort((a: any, b: any) => {
+      const aTime = a.createdAt?.getTime?.() || 0
+      const bTime = b.createdAt?.getTime?.() || 0
+      return bTime - aTime
+    })
+  } catch (error) {
+    console.error('Failed to fetch guide notes:', error)
+    return []
+  }
+}
+
+export const getGuideSessionHistoryForLFID = async (guideId: string, userId: string) => {
+  try {
+    const bookingsRef = collection(db, 'bookings')
+    const q = query(bookingsRef, where('guideId', '==', guideId), where('userId', '==', userId))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || docSnap.data().createdAt || null,
+    })).sort((a: any, b: any) => {
+      const aKey = `${a.sessionDate || ''} ${a.sessionTime || ''}`
+      const bKey = `${b.sessionDate || ''} ${b.sessionTime || ''}`
+      return bKey.localeCompare(aKey)
+    })
+  } catch (error) {
+    console.error('Failed to fetch guide session history:', error)
+    return []
+  }
+}
+
+export const completeBookingSessionWithSummary = async (completionData: {
+  bookingId: string
+  sessionId?: string
+  guideId: string
+  userId: string
+  summary: string
+  recommendations: string
+  followUp: string
+  privateNote?: string
+}) => {
+  try {
+    const privateNoteText = completionData.privateNote?.trim()
+    const privateNote = privateNoteText
+      ? {
+          id: `note_${Date.now()}`,
+          guideId: completionData.guideId,
+          userId: completionData.userId,
+          sessionId: completionData.sessionId || '',
+          note: privateNoteText,
+          summary: completionData.summary,
+          lfid: await getSafeLFID(completionData.userId),
+          isPrivate: true,
+          createdAt: new Date().toISOString(),
+        }
+      : null
+
+    await runTransaction(db, async (transaction) => {
+      const bookingRef = doc(db, 'bookings', completionData.bookingId)
+      const bookingDoc = await transaction.get(bookingRef)
+      if (!bookingDoc.exists()) throw new Error('Booking not found')
+
+      const bookingData = bookingDoc.data()
+      const earningAmount = Number(bookingData.finalAmount || bookingData.price || 0)
+
+      const bookingUpdate: any = {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        completionSummary: completionData.summary,
+        recommendations: completionData.recommendations,
+        followUpSuggestions: completionData.followUp,
+        earningStatus: 'pending',
+        earningAmount,
+        updatedAt: serverTimestamp(),
+      }
+      if (privateNote) {
+        bookingUpdate.guidePrivateNotes = arrayUnion(privateNote)
+      }
+
+      transaction.update(bookingRef, bookingUpdate)
+
+      if (completionData.sessionId) {
+        const sessionRef = doc(db, 'sessions', completionData.sessionId)
+        transaction.set(sessionRef, {
+          status: 'completed',
+          completedAt: serverTimestamp(),
+          guideSummary: completionData.summary,
+          recommendations: completionData.recommendations,
+          followUpSuggestions: completionData.followUp,
+        }, { merge: true })
+      }
+
+      const userNotifRef = doc(collection(db, 'notifications'))
+      transaction.set(userNotifRef, {
+        userId: completionData.userId,
+        type: 'session_completed',
+        title: 'Session Completed',
+        body: 'Your guide has shared a session summary and recommendations.',
+        read: false,
+        actionUrl: '/sessions',
+        bookingId: completionData.bookingId,
+        createdAt: serverTimestamp(),
+      })
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to complete session with summary:', error)
     throw error
   }
 }

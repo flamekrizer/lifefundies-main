@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import LandingPage from './pages/Landing/Landing'
-import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/Auth/Auth'
+import { LoginPage, RegisterPage, MentorRegisterPage, ForgotPasswordPage } from './pages/Auth/Auth'
 import OnboardingPage from './pages/Onboarding/Onboarding'
 import DashboardPage from './pages/Dashboard/Dashboard'
 import MentorsPage from './pages/Mentors/Mentors'
@@ -18,7 +18,11 @@ import FAQPage from './pages/FAQ/FAQ'
 import { onAuthStateChange } from './lib/authService'
 import { subscribeToUserNotifications } from './lib/notificationRepository'
 import Preloader from './components/Preloader'
+import LFBuddyChatbot from './components/LFBuddyChatbot'
 import ContactPage from './pages/Contact/Contact'
+import AboutPage from './pages/About/About'
+import TeamPage from './pages/Team/Team'
+import { PrivacyPage, RefundPage, ServicesPage, TermsPage } from './pages/Policies/Policies'
 import ScrollToHash from './components/layout/ScrollToHash'
 
 // Protected route wrapper
@@ -99,6 +103,7 @@ export default function App() {
     <BrowserRouter>
       <ScrollToHash />
       <AuthModal />
+      <LFBuddyChatbot />
       <Routes>
         {/* Public */}
         <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
@@ -107,10 +112,18 @@ export default function App() {
         <Route path="/community" element={<PublicLayout><CommunityPage /></PublicLayout>} />
         <Route path="/faq" element={<PublicLayout><FAQPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
+        <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
+        <Route path="/team" element={<PublicLayout><TeamPage /></PublicLayout>} />
+        <Route path="/services" element={<PublicLayout><ServicesPage /></PublicLayout>} />
+        <Route path="/terms" element={<PublicLayout><TermsPage /></PublicLayout>} />
+        <Route path="/refund" element={<PublicLayout><RefundPage /></PublicLayout>} />
+        <Route path="/privacy" element={<PublicLayout><PrivacyPage /></PublicLayout>} />
 
         {/* Auth */}
+        <Route path="/get-started" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/mentor-register" element={<MentorRegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Protected — User */}

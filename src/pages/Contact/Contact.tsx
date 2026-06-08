@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Mail, Phone, MapPin, Loader2, Send } from 'lucide-react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import './Contact.css'
 
 export default function ContactPage() {
   const [name, setName] = useState('')

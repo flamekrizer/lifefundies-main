@@ -15,7 +15,7 @@ LifeFundies is built as a **Single Page Application (SPA)** using **Vite + React
     *   *Firestore*: NoSQL document store with realtime listener support, storing users, bookings, and posts.
 *   **Zustand**: A lightweight, hook-based global state manager chosen over Redux to simplify authentication state and notification alerts with near-zero boilerplate.
 *   **Daily.co WebRTC**: Leveraged for reliable WebRTC live video room hosting without requiring custom media servers.
-*   **Razorpay SDK**: Integrated directly to process secure INR payments on client bookings.
+*   **Cashfree SDK**: Integrated directly to process secure INR payments on client bookings with sandbox testing support.
 
 ---
 
@@ -36,7 +36,7 @@ lifefundies/
 │   ├── index.css           # Global typography, color variables, and design tokens
 │   ├── components/         # Reusable layouts and feature components
 │   │   ├── layout/         # Navigation bars and footer components
-│   │   ├── BookingModal.tsx # Booking scheduler & Razorpay payment loader
+│   │   ├── BookingModal.tsx # Booking scheduler & Cashfree payment loader
 │   │   ├── SlotSelection.tsx # Interactive date/time grid picker for sessions
 │   │   └── VideoRoom.tsx    # Live WebRTC daily.co video frame
 │   ├── pages/              # Views mapped directly to router paths
@@ -53,8 +53,8 @@ lifefundies/
 │   ├── stores/             # Zustand global state configurations (index.ts)
 │   ├── lib/                # Client configurations & third-party service wrappers
 │   │   ├── firebase.ts     # Firestore and Firebase Auth init instances
-│   │   ├── bookingService.js # Firestore CRUD operations for session bookings
-│   │   └── razorpay.ts     # Razorpay scripts loader and payment triggers
+│   │   ├── bookingRepository.ts # Firestore CRUD operations for bookings & sessions
+│   │   └── cashfree.ts     # Cashfree payment SDK loader and checkout handler
 │   ├── types/              # TypeScript definitions and interfaces (index.ts)
 │   └── utils/              # Pure formatting and initials parsing utilities (index.ts)
 ```
@@ -70,10 +70,10 @@ lifefundies/
 
 ### B. Scheduling & Booking Flow
 *   **Session Grid Picker (`src/components/SlotSelection.tsx`)**: Renders available days and 60-minute time intervals dynamically, using key combinations to prevent double bookings.
-*   **Razorpay Trigger (`src/lib/razorpay.ts`)**: Integrates the checkout frame:
-    1. Loads the script dynamically from Razorpay CDNs.
-    2. Triggers the payment frame in INR.
-    3. Handles success/error callbacks to write booking state to Firestore.
+*   **Cashfree Payment (`src/lib/cashfree.ts`)**: Integrates the Cashfree checkout:
+    1. Loads the Cashfree SDK dynamically from CDN.
+    2. Initiates secure payment collection in INR.
+    3. Handles success/failure callbacks to confirm booking and create session in Firestore.
 
 ### C. Live Video Session Room (`src/components/VideoRoom.tsx`)
 *   Uses `@daily-co/daily-js` to embed WebRTC video nodes inside the browser.

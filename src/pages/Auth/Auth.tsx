@@ -6,7 +6,6 @@ import { useAuthStore } from '../../stores'
 import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword } from '../../lib/authService'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import './Auth.css'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')

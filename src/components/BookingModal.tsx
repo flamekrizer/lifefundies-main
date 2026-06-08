@@ -5,8 +5,8 @@ import SlotSelection from './SlotSelection';
 import { useAuthStore } from '@/stores';
 import { LIFE_DOMAINS, type DomainId, type Mentor } from '@/types';
 import { MENTOR_CATEGORIES, getCategoryPrices, getSessionPrice, normalizeMentorCategories } from '@/lib/pricing';
-import { initiateRazorpayPayment } from '@/lib/razorpay';
-import { createBooking, confirmPayment } from '@/lib/bookingRepository';
+import { initiateCashfreePayment } from '@/lib/cashfree';
+import { createBooking, confirmPayment, cancelPendingBooking } from '@/lib/bookingRepository';
 import './BookingModal.css';
 
 interface BookingModalProps {
@@ -60,6 +60,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
 
   const handleDomainSelect = (domain: any) => {
     setSelectedDomain(domain);
+    setSelectedSlot(null);
     setStep(2);
   };
 
@@ -99,9 +100,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
       const currentBookingId = bookingResult.bookingId;
       setBookingId(currentBookingId);
 
-      // 2. Launch Razorpay payment checkout in test mode
-      console.log('Initiating Razorpay checkout...');
-      await initiateRazorpayPayment({
+      // 2. Launch Cashfree payment checkout
+      console.log('Initiating Cashfree checkout...');
+      await initiateCashfreePayment({
         amount: activeSessionPrice,
         bookingId: currentBookingId,
         mentorName: mentorName,
@@ -113,18 +114,19 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
         },
         onSuccess: async (paymentData) => {
           try {
-            console.log('Razorpay success callback. Confirming payment in database...');
+            console.log('Cashfree success callback. Confirming payment in database...');
             // 3. Update database: mark booking as paid and create sessions
             await confirmPayment({
               bookingId: currentBookingId,
-              paymentId: paymentData.razorpayPaymentId,
-              razorpayOrderId: paymentData.razorpayOrderId || '',
-              razorpayPaymentId: paymentData.razorpayPaymentId,
-              razorpaySignature: paymentData.razorpaySignature || '',
+              paymentId: paymentData.paymentId,
+              razorpayOrderId: paymentData.orderId,
+              razorpayPaymentId: paymentData.paymentId,
+              razorpaySignature: paymentData.transactionId || '',
             });
 
             console.log('Booking & Payment successfully completed!');
-            setStep(4); // Move to Success screen
+            setStep(4); // Move to request submitted screen
+            setLoading(false);
             onSuccess?.(currentBookingId);
           } catch (err: any) {
             console.error('Payment database confirmation failed:', err);
@@ -132,10 +134,18 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
             setLoading(false);
           }
         },
-        onFailure: (err: any) => {
-          console.error('Razorpay payment failed:', err);
+        onFailure: async (err: any) => {
+          console.error('Cashfree payment failed:', err);
           setError(err.message || 'Payment transaction failed or cancelled.');
           setLoading(false);
+
+          // Clean up the pending booking and release the slot
+          try {
+            await cancelPendingBooking(currentBookingId);
+            console.log('Cleaned up pending booking after payment failure');
+          } catch (cleanupErr) {
+            console.error('Failed to clean up booking after payment failure:', cleanupErr);
+          }
         },
       });
 
@@ -164,7 +174,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
   return (
     <div className="booking-modal-overlay">
       <div className="booking-modal-card animate-scaleIn">
-        
+
         {/* Header */}
         <div className="booking-modal-header">
           <div>
@@ -190,10 +200,10 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
             {[1, 2, 3].map((s) => (
               <div key={s} className="booking-modal-step-item">
                 <div className={`booking-modal-step-circle ${
-                  step === s 
-                    ? 'booking-modal-step-circle--active' 
-                    : step > s 
-                      ? 'booking-modal-step-circle--completed' 
+                  step === s
+                    ? 'booking-modal-step-circle--active'
+                    : step > s
+                      ? 'booking-modal-step-circle--completed'
                       : ''
                 }`}>
                   {s}
@@ -225,24 +235,22 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                       type="button"
                       className="booking-domain-card"
                     >
-                      <span className="booking-domain-card__icon">{domain.icon}</span>
                       <div className="booking-domain-card__info">
                         <p className="booking-domain-card__name">{domain.label}</p>
                         <p className="body-sm text-muted">{domain.description}</p>
                       </div>
                     </button>
                   ))}
-                  
+
                   {remainingDomains.length > 0 && (
                     <div className="booking-domain-card" style={{ cursor: 'default' }}>
-                      <span className="booking-domain-card__icon">🌐</span>
                       <div className="booking-domain-card__info" style={{ width: '100%' }}>
                         <p className="booking-domain-card__name">Other Focus Area</p>
-                        <select 
-                          className="form-input" 
-                          style={{ 
-                            marginTop: 'var(--sp-2)', 
-                            paddingTop: '0.4rem', 
+                        <select
+                          className="form-input"
+                          style={{
+                            marginTop: 'var(--sp-2)',
+                            paddingTop: '0.4rem',
                             paddingBottom: '0.4rem',
                             fontSize: '0.875rem',
                             background: 'var(--clr-bg)'
@@ -261,7 +269,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                           <option value="" disabled>Select a topic...</option>
                           {remainingDomains.map(d => (
                             <option key={d.id} value={d.id}>
-                              {d.icon} {d.label}
+                              {d.label}
                             </option>
                           ))}
                         </select>
@@ -282,6 +290,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                       onClick={() => {
                         setSelectedCategory(category.id)
                         setSelectedDuration(category.prices[0].duration)
+                        setSelectedSlot(null)
                       }}
                       type="button"
                       className={`booking-mode-card ${
@@ -305,7 +314,10 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   {activeCategoryPriceOptions.map(option => (
                     <button
                       key={option.duration}
-                      onClick={() => setSelectedDuration(option.duration)}
+                      onClick={() => {
+                        setSelectedDuration(option.duration)
+                        setSelectedSlot(null)
+                      }}
                       type="button"
                       className={`booking-mode-card ${selectedDuration === option.duration ? 'booking-mode-card--active' : ''}`}
                     >
@@ -343,10 +355,12 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               >
                 ← Back to Topic & Mode Selection
               </button>
-              
+
               <SlotSelection
                 guideId={mentorId}
                 guidePrice={activeSessionPrice}
+                category={selectedCategory}
+                duration={selectedDuration}
                 onSlotSelect={handleSlotSelect}
               />
             </div>
@@ -397,7 +411,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
 
               <div className="booking-payment-note">
                 <p className="body-sm text-muted">
-                  🔒 Payments are secured by Razorpay. Your session is 100% confidential. You can reschedule up to 12 hours before the start.
+                  🔒 Payments are secured by Cashfree. Your session is 100% confidential. You can reschedule up to 12 hours before the start.
                 </p>
               </div>
 
@@ -421,9 +435,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               <div className="booking-success-icon">
                 <CheckCircle2 size={64} />
               </div>
-              <h3 className="heading-1">You are all set!</h3>
+              <h3 className="heading-1">Request sent!</h3>
               <p className="body-lg text-muted">
-                Your session with <strong>{mentorName}</strong> is confirmed.
+                Your payment is complete. <strong>{mentorName}</strong> will confirm the session shortly.
               </p>
 
               <div className="booking-success-card">
@@ -442,7 +456,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               </div>
 
               <p className="body-sm text-muted" style={{ maxWidth: 400, textAlign: 'center', marginTop: 'var(--sp-4)' }}>
-                A calendar invitation with joining details has been sent to your email. You can view and manage this in your portal.
+                You can track this request in My Sessions. Joining details appear there after the mentor accepts.
               </p>
             </div>
           )}
@@ -541,9 +555,9 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
             </div>
             <div className="booking-terms-body">
               <h4 className="heading-2" style={{ fontSize: '1.25rem', marginBottom: 'var(--sp-2)' }}>LifeFundies – Terms & Conditions</h4>
-              <p className="terms-date" style={{ fontSize: '0.8125rem', color: 'var(--clr-text-muted)', marginBottom: 'var(--sp-4)' }}>Last Updated: August 2025</p>
+              <p className="terms-date" style={{ fontSize: '0.8125rem', color: 'var(--clr-text-muted)', marginBottom: 'var(--sp-4)' }}>Last Updated: August 5, 2025</p>
               <p style={{ marginBottom: 'var(--sp-4)' }}>Welcome to LifeFundies (“we”, “us”, “our”). By accessing or using our platform, you agree to these Terms & Conditions, which govern all sessions, conversations, communications, and services offered through LifeFundies.</p>
-              
+
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>1. Acceptance of Terms</h5>
               <p style={{ marginBottom: 'var(--sp-2)' }}>By booking or participating in a LifeFundies session, you confirm that:</p>
               <ul style={{ listStyleType: 'disc', paddingLeft: 'var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
@@ -572,15 +586,15 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               </ul>
 
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>4. Session Access & Payment</h5>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>Sessions can only be booked via Tally Form and confirmed after payment via Cashfree.</p>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>LF-ID (your anonymous identity) is generated only post-payment verification.</p>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>First-time users may access a subsidized trial (if mentioned).</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Sessions are booked directly through the LifeFundies website by selecting a mentor, life domain, category, duration, and available time slot. Payment is confirmed through Cashfree.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>LF-ID is your semi-anonymous identity for session handling and confidential progress tracking.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>First-time users may access a subsidized trial or offer only if it is clearly shown on the website.</p>
               <p style={{ marginBottom: 'var(--sp-4)' }}>Repeat users falsely claiming “first session” to bypass payment may be banned for 3 months.</p>
 
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>5. Session Flow & Confidentiality</h5>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>All sessions are held via WhatsApp, Zoom, or Chat, depending on user choice.</p>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>Your real name, number, or email is never revealed to the guide.</p>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>Guides receive only: LF-ID (semi-anonymous ID), Chosen topic (e.g., “Career Confusion”), and Session time slot.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Sessions may be held through the website video room, Google Meet, Zoom, WhatsApp, or chat depending on the booking flow and mentor availability.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Your real name, phone number, or email is not shared with the guide unless operationally required or voluntarily shared by you.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Guides generally receive only: LF-ID, chosen topic, session date/time, and session link.</p>
               <p style={{ marginBottom: 'var(--sp-4)' }}>LifeFundies will never sell or misuse your data.</p>
 
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>6. Refund Policy</h5>
@@ -588,7 +602,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               <p style={{ marginBottom: 'var(--sp-4)' }}>If technical errors or accidental payments occur, you may contact support@lifefundies.in within 48 hours.</p>
 
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>7. Misuse & Bans</h5>
-              <p style={{ marginBottom: 'var(--sp-2)' }}>Submitting false info, misusing free services, or trolling guides will result in a ban for up to 3 months.</p>
+              <p style={{ marginBottom: 'var(--sp-2)' }}>Submitting false info, misusing offers, harassing guides, or trolling will result in a ban for up to 3 months.</p>
               <p style={{ marginBottom: 'var(--sp-4)' }}>We reserve the right to suspend users without notice in case of policy violation.</p>
 
               <h5 style={{ fontWeight: 600, marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-2)' }}>8. Intellectual Property</h5>

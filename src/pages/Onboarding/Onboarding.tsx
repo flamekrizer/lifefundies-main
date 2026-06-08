@@ -5,7 +5,6 @@ import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { useAuthStore } from '../../stores'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import './Onboarding.css'
 
 const STEPS = ['Welcome', 'About You', 'Your Domains', 'Your Challenge', 'Preferences']
 
@@ -296,7 +295,6 @@ function DomainsStep({ selected, toggle }: { selected: DomainId[]; toggle: (id: 
             onClick={() => toggle(domain.id)}
             style={{ '--domain-color': domain.color } as React.CSSProperties}
           >
-            <span className="ob-domain-card__icon">{domain.icon}</span>
             <span className="ob-domain-card__label">{domain.label}</span>
             {selected.includes(domain.id) && <Check size={14} className="ob-domain-card__check" />}
           </button>

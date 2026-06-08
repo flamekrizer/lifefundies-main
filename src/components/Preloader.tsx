@@ -5,11 +5,10 @@ export default function Preloader() {
     <div className="preloader-container">
       <div className="preloader-content">
         <div className="preloader-logo-wrap">
-          <span className="preloader-emoji">🌿</span>
+          <img src="./logo.png" alt="LifeFundies Logo" className="preloader-logo" />
         </div>
         <div className="preloader-spinner"></div>
-        <h3 className="preloader-title">LifeFundies</h3>
-        <p className="preloader-subtitle text-muted">Securing your session...</p>
+
       </div>
     </div>
   );

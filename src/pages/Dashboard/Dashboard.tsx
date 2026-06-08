@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Calendar, Clock, Star, TrendingUp, Users, ArrowRight, Bell, BookOpen, Heart, X } from 'lucide-react'
-import { getUserBookings } from '../../lib/bookingRepository'
+import { subscribeToUserBookings } from '../../lib/bookingRepository'
 import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/notificationRepository'
 import { getUserPosts } from '../../lib/communityRepository'
 import { subscribeToMentors } from '../../lib/userRepository'
 import { useAuthStore, useAppStore } from '../../stores'
 import { LIFE_DOMAINS } from '../../types'
-import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
+import { formatCurrency, getInitials } from '../../utils'
 import VideoRoom from '../../components/VideoRoom'
-import './Dashboard.css'
 
 const SessionSkeleton = () => (
   <div className="session-card skeleton" style={{ pointerEvents: 'none', height: '72px' }} />
@@ -22,11 +21,12 @@ export default function DashboardPage() {
   
   const [showNotifications, setShowNotifications] = useState(false)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [sessionMentorName, setSessionMentorName] = useState('Priya Sharma')
+  const [sessionMentorName, setSessionMentorName] = useState('LifeFundies Mentor')
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(false)
   const [userPostsCount, setUserPostsCount] = useState(0)
-  const [recommendedMentors, setRecommendedMentors] = useState<any[]>(MOCK_MENTORS.slice(0, 3))
+  const [recommendedMentors, setRecommendedMentors] = useState<any[]>([])
+  const [lfIdCopied, setLfIdCopied] = useState(false)
 
   const { 
     notificationsList, 
@@ -36,19 +36,19 @@ export default function DashboardPage() {
 
 
 
-  // Bookings fetch (refresh-based, only loads when screen is refreshed)
+  // Bookings subscription keeps payment and mentor-approval state live.
   useEffect(() => {
     if (!user?.uid) return
 
     setLoadingBookings(true)
-    getUserBookings(user.uid)
-      .then((data: any) => {
-        if (Array.isArray(data)) {
-          setBookings(data)
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoadingBookings(false))
+    const unsubscribe = subscribeToUserBookings(user.uid, (data: any) => {
+      if (Array.isArray(data)) {
+        setBookings(data)
+      }
+      setLoadingBookings(false)
+    })
+
+    return () => unsubscribe()
   }, [user?.uid])
 
   // Community posts count fetch
@@ -67,15 +67,13 @@ export default function DashboardPage() {
   // Mentors list subscription for recommendations
   useEffect(() => {
     const unsubscribe = subscribeToMentors((allMentors) => {
-      if (allMentors.length > 0) {
-        const userD = user?.domains || []
-        const sorted = [...allMentors].sort((a, b) => {
-          const aMatch = (a.domains || []).filter(d => userD.includes(d)).length
-          const bMatch = (b.domains || []).filter(d => userD.includes(d)).length
-          return bMatch - aMatch
-        })
-        setRecommendedMentors(sorted.slice(0, 3))
-      }
+      const userD = user?.domains || []
+      const sorted = [...allMentors].sort((a, b) => {
+        const aMatch = (a.domains || []).filter(d => userD.includes(d)).length
+        const bMatch = (b.domains || []).filter(d => userD.includes(d)).length
+        return bMatch - aMatch
+      })
+      setRecommendedMentors(sorted.slice(0, 3))
     })
     return () => unsubscribe()
   }, [user?.domains])
@@ -109,6 +107,18 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCopyLFID = async () => {
+    if (!user?.lfId) return
+
+    try {
+      await navigator.clipboard.writeText(user.lfId)
+      setLfIdCopied(true)
+      window.setTimeout(() => setLfIdCopied(false), 1600)
+    } catch (err) {
+      console.error('Failed to copy LFID:', err)
+    }
+  }
+
   const greeting = () => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
@@ -124,20 +134,19 @@ export default function DashboardPage() {
     return `${y}-${m}-${d}`;
   })();
 
-  // Filter bookings to upcoming sessions format: confirmed or pending, AND date >= current date
+  // Filter bookings to upcoming lifecycle states: paid requests and confirmed sessions.
   const upcomingSessions = bookings
     .filter(b => {
-      const isStatusMatch = b.status === 'confirmed' || b.status === 'pending';
-      const isUpcomingDate = b.sessionDate >= currentDateStr;
+      const isStatusMatch = b.status === 'pending' || b.status === 'confirmed';
+      const isUpcomingDate = !b.sessionDate || b.sessionDate >= currentDateStr;
       return isStatusMatch && isUpcomingDate;
     })
     .map(b => {
-      const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
         sessionId: b.sessionId || null,
-        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
-        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
+        mentor: b.mentorName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         time: b.sessionTime,
@@ -228,6 +237,31 @@ export default function DashboardPage() {
                 <span className="dashboard__name">{user?.displayName || 'Explorer'}</span> 👋
               </h1>
               <p className="text-muted">Continue your journey to life clarity.</p>
+              {user?.lfId && (
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginTop: '8px',
+                    padding: '6px 12px',
+                    borderRadius: '999px',
+                    background: 'rgba(13,115,119,0.1)',
+                    border: '1px solid rgba(13,115,119,0.2)',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', opacity: 0.7 }}>LifeFundies ID</span>
+                  <strong>{user.lfId}</strong>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={handleCopyLFID}
+                    style={{ padding: '0.25rem 0.5rem' }}
+                  >
+                    {lfIdCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="dashboard__header-actions" style={{ position: 'relative' }}>
               <button 
@@ -319,6 +353,7 @@ export default function DashboardPage() {
                   <div className="flex-col gap-3">
                     {upcomingSessions.map(session => {
                       const isJoinable = session.status === 'confirmed' && !!session.sessionId;
+                      const statusLabel = session.status === 'pending' ? 'Awaiting mentor' : session.status;
                       return (
                         <div key={session.id} className="session-card" id={`session-${session.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
@@ -338,14 +373,14 @@ export default function DashboardPage() {
                           </div>
                           <div className="session-card__actions">
                             <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
-                              {session.status}
+                              {statusLabel}
                             </span>
                             <button 
                               className="btn btn-outline btn-sm"
                               onClick={() => handleJoinSession(session.mentor, session.sessionId || session.id)}
                               disabled={!isJoinable}
                             >
-                              Join
+                              {session.status === 'pending' ? 'Pending' : 'Join'}
                             </button>
                           </div>
                         </div>
@@ -385,7 +420,7 @@ export default function DashboardPage() {
                         <div className="flex gap-2">
                           {mentor.domains.slice(0, 2).map((d: any) => {
                             const domain = LIFE_DOMAINS.find(x => x.id === d)
-                            return domain ? <span key={d} className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{domain.icon} {domain.label}</span> : null
+                            return domain ? <span key={d} className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{domain.label}</span> : null
                           })}
                         </div>
                         <div className="flex gap-3" style={{ marginTop: 'var(--sp-1)' }}>
@@ -412,7 +447,6 @@ export default function DashboardPage() {
                   <div className="flex-col gap-3" style={{ marginTop: 'var(--sp-4)' }}>
                     {userDomains.map(domain => domain && (
                       <Link key={domain.id} to={`/mentors?domain=${domain.id}`} className="domain-pill">
-                        <span>{domain.icon}</span>
                         <span>{domain.label}</span>
                         <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'var(--clr-text-subtle)' }} />
                       </Link>

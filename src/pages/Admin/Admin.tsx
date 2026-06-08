@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Users, BookOpen, CreditCard, TrendingUp, AlertTriangle, CheckCircle, MoreVertical, Search } from 'lucide-react'
-import { MOCK_MENTORS, getInitials } from '../../utils'
-import './Admin.css'
+import { getInitials } from '../../utils'
+import { reviewMentorApplication, subscribeToMentorApplications, subscribeToMentors } from '../../lib/userRepository'
 
 const MOCK_USERS = [
   { id: 'u1', name: 'Shreya Agarwal', email: 'shreya@example.com', role: 'user', sessions: 3, joinDate: 'May 10', status: 'active' },
@@ -13,12 +13,45 @@ const MOCK_USERS = [
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'mentors' | 'sessions' | 'payments'>('overview')
   const [searchQuery, setSearchQuery] = useState('')
+  const [mentorApplications, setMentorApplications] = useState<any[]>([])
+  const [realMentors, setRealMentors] = useState<any[]>([])
+  const [reviewLoading, setReviewLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMentorApplications(setMentorApplications)
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMentors(setRealMentors)
+    return () => unsubscribe()
+  }, [])
+
+  const pendingApplications = mentorApplications.filter(app => app.mentorApplicationStatus === 'pending' || app.mentorApplicationStatus === 'info_requested')
+
+  const handleReviewApplication = async (uid: string, decision: 'approved' | 'rejected' | 'info_requested') => {
+    const note = decision === 'info_requested'
+      ? window.prompt('What information should this guide resubmit?', 'Please add more detail about your experience and certifications.') || ''
+      : decision === 'rejected'
+        ? window.prompt('Add an optional rejection note for this guide.', '') || ''
+        : ''
+
+    setReviewLoading(uid)
+    try {
+      await reviewMentorApplication(uid, decision, note)
+    } catch (error: any) {
+      console.error('Failed to review mentor application:', error)
+      alert(error.message || 'Failed to update application.')
+    } finally {
+      setReviewLoading(null)
+    }
+  }
 
   const stats = [
     { icon: Users, label: 'Total Users', value: '2,184', change: '+127 this week', color: 'var(--clr-primary)' },
     { icon: BookOpen, label: 'Sessions Done', value: '4,891', change: '+245 this week', color: 'var(--clr-accent)' },
     { icon: CreditCard, label: 'Revenue (May)', value: '₹1,72,400', change: '+38% MoM', color: 'var(--clr-secondary)' },
-    { icon: TrendingUp, label: 'Active Mentors', value: '51', change: '+8 this month', color: 'var(--clr-purple)' },
+    { icon: TrendingUp, label: 'Active Mentors', value: String(realMentors.length), change: `${pendingApplications.length} pending`, color: 'var(--clr-purple)' },
   ]
 
   return (
@@ -73,8 +106,8 @@ export default function AdminPage() {
               <div className="admin-alerts animate-fadeInUp delay-300">
                 <div className="admin-alert admin-alert--warning">
                   <AlertTriangle size={16} />
-                  <span>3 mentor applications pending review</span>
-                  <button className="btn btn-sm btn-ghost">Review</button>
+                  <span>{pendingApplications.length} mentor applications pending review</span>
+                  <button className="btn btn-sm btn-ghost" onClick={() => setActiveTab('mentors')}>Review</button>
                 </div>
                 <div className="admin-alert admin-alert--success">
                   <CheckCircle size={16} />
@@ -110,7 +143,7 @@ export default function AdminPage() {
                 <div className="admin-section">
                   <h2 className="heading-2">Top Mentors</h2>
                   <div className="flex-col gap-3" style={{ marginTop: 'var(--sp-4)' }}>
-                    {MOCK_MENTORS.map((mentor, i) => (
+                    {realMentors.length > 0 ? realMentors.map((mentor, i) => (
                       <div key={mentor.uid} className="admin-mentor-row" id={`admin-mentor-${mentor.uid}`}>
                         <div className="avatar avatar-sm" style={{ background: `hsl(${i * 80}, 60%, 40%)` }}>
                           {getInitials(mentor.displayName)}
@@ -122,7 +155,9 @@ export default function AdminPage() {
                         <span className="badge badge-primary">Verified</span>
                         <button className="btn btn-ghost btn-sm"><MoreVertical size={14} /></button>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="body-sm text-muted">No real mentors approved yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -173,7 +208,64 @@ export default function AdminPage() {
             </div>
           )}
 
-          {(activeTab === 'mentors' || activeTab === 'sessions' || activeTab === 'payments') && (
+          {activeTab === 'mentors' && (
+            <div className="admin-content">
+              <div className="admin-section animate-fadeInUp">
+                <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
+                  <h2 className="heading-2">Guide Verification</h2>
+                  <span className="badge badge-secondary">{pendingApplications.length} waiting</span>
+                </div>
+                <div className="flex-col gap-3">
+                  {mentorApplications.length > 0 ? mentorApplications.map(application => {
+                    const details = application.mentorApplication || {}
+                    const name = details.fullName || application.displayName || 'Guide Applicant'
+                    const status = application.mentorApplicationStatus || 'pending'
+                    return (
+                      <div key={application.uid} className="request-card" id={`mentor-application-${application.uid}`}>
+                        <div className="avatar avatar-md" style={{ background: 'var(--clr-primary)' }}>
+                          {getInitials(name)}
+                        </div>
+                        <div className="request-card__info">
+                          <p className="request-card__user">{name}</p>
+                          <p className="body-sm text-muted">{application.email}</p>
+                          <div className="flex gap-3">
+                            <span className="body-sm text-muted">{details.qualification || 'Qualification pending'}</span>
+                            <span className="body-sm text-muted">{details.experience || '0'} years</span>
+                          </div>
+                          <p className="body-sm text-muted" style={{ marginTop: '4px' }}>{details.bio || 'No bio submitted.'}</p>
+                          {Array.isArray(details.expertise) && details.expertise.length > 0 && (
+                            <div className="mentor-card-full__expertise" style={{ marginTop: 'var(--sp-2)' }}>
+                              {details.expertise.map((item: string) => <span key={item} className="badge badge-secondary">{item}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="request-card__actions" style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span className={`badge ${status === 'approved' ? 'badge-primary' : status === 'rejected' ? 'badge-accent' : 'badge-secondary'}`}>
+                            {status.replace('_', ' ')}
+                          </span>
+                          <div className="flex gap-2">
+                            <button className="btn btn-primary btn-sm" disabled={reviewLoading === application.uid || status === 'approved'} onClick={() => handleReviewApplication(application.uid, 'approved')}>
+                              Approve
+                            </button>
+                            <button className="btn btn-outline btn-sm" disabled={reviewLoading === application.uid || status === 'approved'} onClick={() => handleReviewApplication(application.uid, 'info_requested')}>
+                              More Info
+                            </button>
+                            <button className="btn btn-ghost btn-sm" disabled={reviewLoading === application.uid || status === 'approved'} onClick={() => handleReviewApplication(application.uid, 'rejected')}>
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }) : (
+                    <p className="text-center text-muted" style={{ padding: '2rem 0' }}>No guide applications yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(activeTab === 'sessions' || activeTab === 'payments') && (
             <div className="admin-content">
               <div className="portal-coming-soon animate-fadeIn">
                 <span style={{ fontSize: '3rem' }}>🔧</span>

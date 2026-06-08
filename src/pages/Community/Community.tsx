@@ -5,7 +5,59 @@ import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
 import { addComment, createPost, getComments, getPosts, upvoteComment, upvotePost } from '../../lib/communityRepository'
 import type { Comment, Post } from '../../types'
-import './Community.css'
+
+const CHAT_ROOM_GROUPS = [
+  {
+    title: 'Support Chat Rooms',
+    desc: 'For people who need emotional support.',
+    rooms: ['Depression support', 'Anxiety support', 'Breakup / heartbreak support', 'Grief & loss', 'Loneliness support'],
+  },
+  {
+    title: 'Mental Health Chat Rooms',
+    desc: 'Focused on psychological well-being.',
+    rooms: ['Stress management', 'Therapy discussion rooms', 'PTSD support', 'Panic attack support', 'Self-care communities'],
+  },
+  {
+    title: 'Relationship Chat Rooms',
+    desc: 'For emotional relationship matters.',
+    rooms: ['Dating advice', 'Marriage issues', 'Friendship problems', 'Toxic relationship support', 'Trust & betrayal discussions'],
+  },
+  {
+    title: 'Motivation & Positivity Rooms',
+    desc: 'To uplift mood and mindset.',
+    rooms: ['Daily motivation', 'Life goals', 'Success stories', 'Self-love rooms', 'Confidence building'],
+  },
+  {
+    title: 'Anonymous Venting Rooms',
+    desc: 'Where users can freely express.',
+    rooms: ['Rant rooms', 'Secret confession rooms', 'Emotional release rooms', 'Judgment-free zones'],
+  },
+  {
+    title: 'Peer-to-Peer Healing Rooms',
+    desc: 'People helping people.',
+    rooms: ['Survivor communities', 'Life struggles', 'Career stress', 'Student pressure rooms'],
+  },
+  {
+    title: 'AI Emotional Chat Rooms',
+    desc: 'Chat with bots for emotional relief.',
+    rooms: ['AI therapist', 'Mood tracker bot', 'Emotional companion bot', 'Meditation assistant'],
+  },
+  {
+    title: 'Age-Based Emotional Rooms',
+    desc: 'Support based on life stage.',
+    rooms: ['Teen emotional support', 'College stress rooms', 'Adult life struggles', 'Senior loneliness rooms'],
+  },
+  {
+    title: 'Topic-Based Emotional Rooms',
+    desc: 'Focused rooms for specific life concerns.',
+    rooms: ['Family issues', 'Financial stress', 'Health anxiety', 'Spiritual healing'],
+  },
+  {
+    title: 'Crisis Chat Rooms',
+    desc: 'For urgent emotional support and safety routing.',
+    rooms: ['Suicide prevention', 'Panic crisis rooms', 'Abuse help'],
+  },
+]
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -103,7 +155,7 @@ export default function CommunityPage() {
           <div className="community__layout">
             {/* Main */}
             <div className="community__main">
-              <div className="community__header animate-fadeInUp">
+              <div className="community__header animate-fadeInUp" style={{backgroundImage:'./Community.jpeg'}}>
                 <div>
                   <h1 className="display-2">Community <span className="text-gradient">Forum</span></h1>
                   <p className="text-muted">A safe space to share, learn, and connect with peers on the same journey.</p>
@@ -153,6 +205,55 @@ export default function CommunityPage() {
                 ))}
               </div>
 
+              <section className="chat-rooms-section animate-fadeInUp delay-200" aria-labelledby="chat-rooms-title">
+                <div className="chat-rooms-section__header">
+                  <div>
+                    <span className="section-eyebrow">Live Support Spaces</span>
+                    <h2 className="heading-1" id="chat-rooms-title">Chat Rooms</h2>
+                    <p className="body-sm text-muted">Choose a safe topic room, connect anonymously, and find peer support without judgement.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      if (!user) setAuthModalOpen(true)
+                    }}
+                  >
+                    <MessageCircle size={15} /> Start Chatting
+                  </button>
+                </div>
+
+                <div className="chat-rooms-grid">
+                  {CHAT_ROOM_GROUPS.map((group, index) => (
+                    <article key={group.title} className="chat-room-card">
+                      <div className="chat-room-card__top">
+                        <span className="chat-room-card__count">{String(index + 1).padStart(2, '0')}</span>
+                        <h3 className="heading-3">{group.title}</h3>
+                        <p className="body-sm text-muted">{group.desc}</p>
+                      </div>
+                      <div className="chat-room-card__rooms">
+                        {group.rooms.map(room => (
+                          <button
+                            key={room}
+                            type="button"
+                            className="chat-room-pill"
+                            onClick={() => {
+                              if (!user) {
+                                setAuthModalOpen(true)
+                                return
+                              }
+                              setSearchQuery(room)
+                            }}
+                          >
+                            {room}
+                          </button>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
               {/* Posts */}
               <div className="community__posts">
                 {loading ? (
@@ -188,7 +289,7 @@ export default function CommunityPage() {
                           </div>
                           {domain && (
                             <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
-                              {domain.icon} {domain.label}
+                              {domain.label}
                             </span>
                           )}
                         </div>
@@ -255,7 +356,7 @@ export default function CommunityPage() {
                         onClick={() => setSelectedDomain(selectedDomain === d.id ? '' : d.id)}
                         id={`community-domain-${d.id}`}
                       >
-                        {d.icon} {d.label}
+                        {d.label}
                         <span className="community__domain-count">{count}</span>
                       </button>
                     )
@@ -532,7 +633,7 @@ function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p
               <label className="form-label" htmlFor="new-post-domain">Life Domain</label>
               <select className="form-input" value={form.domain} onChange={e => update('domain', e.target.value)} id="new-post-domain" required>
                 <option value="">Select a domain</option>
-                {LIFE_DOMAINS.map(d => <option key={d.id} value={d.id}>{d.icon} {d.label}</option>)}
+                {LIFE_DOMAINS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
             </div>
             <div className="ob-anon-toggle">

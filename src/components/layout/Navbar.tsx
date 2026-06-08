@@ -1,25 +1,31 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { Menu, X, Bell, ChevronDown, LogOut, Settings, User, Moon, Sun } from 'lucide-react'
 import { useAppStore, useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
 import { logout as firebaseLogout } from '../../lib/authService'
 import { markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/notificationRepository'
 import './Navbar.css'
 
-const NAV_LINKS = [
+const NAV_LINKS: Array<{ label: string; href: string; submenu?: Array<{ label: string; href: string }> }> = [
+  { label: 'Home', href: '/' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Team', href: '/team' },
   { label: 'Find Mentors', href: '/mentors' },
   { label: 'Community', href: '/community' },
-  { label: '18 Domains', href: '/#domains' },
-  { label: 'How It Works', href: '/#how-it-works' },
   { label: 'FAQs', href: '/faq' },
   { label: 'Contact Us', href: '/contact' },
 ]
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [aboutMenuOpen, setAboutMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = window.localStorage.getItem('lifefundies-theme')
+    return savedTheme === 'light' ? 'light' : 'dark'
+  })
   const { user, logout } = useAuthStore()
   const [showNotifications, setShowNotifications] = useState(false)
   const { notificationsList, markAllNotificationsRead, markNotificationRead } = useAppStore()
@@ -34,7 +40,13 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem('lifefundies-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
     setMenuOpen(false)
+    setAboutMenuOpen(false)
     setProfileOpen(false)
     setShowNotifications(false)
   }, [location])
@@ -71,6 +83,10 @@ export default function Navbar() {
     }
   }
 
+  const toggleTheme = () => {
+    setTheme(current => current === 'dark' ? 'light' : 'dark')
+  }
+
   return (
     <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="container navbar__inner">
@@ -81,19 +97,63 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="navbar__links hide-mobile">
-          {NAV_LINKS.map(link => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`navbar__link ${location.pathname === link.href ? 'navbar__link--active' : ''}`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(link => {
+            const isActive = location.pathname === link.href || (link.submenu?.some?.(item => item.href === location.pathname))
+
+            if (link.submenu) {
+              return (
+                <div key={link.href} className="navbar__link-group" onMouseLeave={() => setAboutMenuOpen(false)}>
+                  <button
+                    type="button"
+                    className={`navbar__link navbar__link--dropdown ${isActive ? 'navbar__link--active' : ''}`}
+                    onClick={() => setAboutMenuOpen(prev => !prev)}
+                    aria-haspopup="menu"
+                    aria-expanded={aboutMenuOpen}
+                  >
+                    {link.label}
+                    <ChevronDown size={14} className={aboutMenuOpen ? 'rotate-180' : ''} />
+                  </button>
+                  {aboutMenuOpen && (
+                    <div className="navbar__submenu">
+                      {link.submenu.map(sub => (
+                        <Link
+                          key={sub.href}
+                          to={sub.href}
+                          className="navbar__submenu-link"
+                        >
+                          {sub.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={`navbar__link ${isActive ? 'navbar__link--active' : ''}`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
         </div>
 
         {/* Actions */}
         <div className="navbar__actions">
+          <button
+            type="button"
+            className="navbar__theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+
           {user ? (
             <>
               {user.role === 'mentor' ? (
@@ -102,8 +162,8 @@ export default function Navbar() {
                 <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
               )}
               <div className="navbar__notif-container" style={{ position: 'relative' }}>
-                <button 
-                  className="navbar__notif" 
+                <button
+                  className="navbar__notif"
                   aria-label="Notifications"
                   onClick={() => setShowNotifications(!showNotifications)}
                 >
@@ -125,8 +185,8 @@ export default function Navbar() {
                     <div className="navbar__notifications-list">
                       {notificationsList.length > 0 ? (
                         notificationsList.map(n => (
-                          <div 
-                            key={n.id} 
+                          <div
+                            key={n.id}
                             className={`navbar__notification-item ${!n.isRead ? 'navbar__notification-item--unread' : ''}`}
                             onClick={() => handleMarkRead(n.id, n.actionUrl)}
                           >
@@ -189,8 +249,8 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="btn btn-ghost btn-sm hide-mobile">Sign In</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
+              <Link to="/get-started" className="btn btn-ghost btn-sm hide-mobile">Sign In</Link>
+              <Link to="/get-started" className="btn btn-primary btn-sm">Get Started</Link>
             </>
           )}
 
@@ -209,33 +269,64 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="navbar__mobile-menu">
-          {NAV_LINKS.map(link => (
-            <Link 
-              key={link.href} 
-              to={link.href} 
-              className="navbar__mobile-link"
-              onClick={() => setMenuOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(link => {
+            if (link.submenu) {
+              return (
+                <div key={link.href} className="navbar__mobile-submenu-group">
+                  <button
+                    type="button"
+                    className="navbar__mobile-link navbar__mobile-link--toggle"
+                    onClick={() => setAboutMenuOpen(prev => !prev)}
+                    aria-expanded={aboutMenuOpen}
+                  >
+                    {link.label}
+                  </button>
+                  {aboutMenuOpen && (
+                    <div className="navbar__mobile-submenu">
+                      {link.submenu.map(sub => (
+                        <Link
+                          key={sub.href}
+                          to={sub.href}
+                          className="navbar__mobile-submenu-link"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {sub.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="navbar__mobile-link"
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
           <div className="navbar__mobile-actions">
             {user ? (
               <>
-                <Link 
-                  to={user.role === 'mentor' ? "/mentor-portal" : "/dashboard"} 
-                  className="btn btn-outline" 
+                <Link
+                  to={user.role === 'mentor' ? "/mentor-portal" : "/dashboard"}
+                  className="btn btn-outline"
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >
                   {user.role === 'mentor' ? "Mentor Portal" : "Dashboard"}
                 </Link>
-                <button 
-                  className="btn btn-ghost" 
+                <button
+                  className="btn btn-ghost"
                   onClick={() => {
                     handleLogout()
                     setMenuOpen(false)
-                  }} 
+                  }}
                   style={{ flex: 1 }}
                 >
                   Sign Out
@@ -243,17 +334,17 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link 
-                  to="/login" 
-                  className="btn btn-outline" 
+                <Link
+                  to="/get-started"
+                  className="btn btn-outline"
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >
                   Sign In
                 </Link>
-                <Link 
-                  to="/register" 
-                  className="btn btn-primary" 
+                <Link
+                  to="/get-started"
+                  className="btn btn-primary"
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import './FAQ.css'
 
 interface FAQItem {
   question: string

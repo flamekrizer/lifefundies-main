@@ -8,6 +8,7 @@ interface Slot {
   time: string;
   duration: number;
   price: number;
+  category?: string;
   source?: 'guide_slots' | 'guides' | 'mock';
   isBooked: boolean;
   isBlocked?: boolean;
@@ -17,6 +18,8 @@ interface Slot {
 interface SlotSelectionProps {
   guideId: string;
   guidePrice: number;
+  category: string;
+  duration: number;
   onSlotSelect: (slot: Slot) => void;
 }
 
@@ -24,7 +27,7 @@ interface SlotSelectionProps {
  * 📅 Slot Selection Component (TypeScript)
  * Displays and groups available slots for a guide from Firestore
  */
-export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: SlotSelectionProps) {
+export default function SlotSelection({ guideId, guidePrice, category, duration, onSlotSelect }: SlotSelectionProps) {
   const [slots, setSlots] = useState<Record<string, Slot[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -39,10 +42,15 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
           .split('T')[0];
         
         const availableSlots: Slot[] = await getGuideSlots(guideId, today, nextWeek);
+        const matchingSlots = availableSlots.filter(slot => {
+          const categoryMatches = !slot.category || slot.category === category;
+          const durationMatches = Number(slot.duration) === Number(duration);
+          return categoryMatches && durationMatches;
+        }).map(slot => ({ ...slot, price: guidePrice }));
         
         // Group by date
         const groupedSlots: Record<string, Slot[]> = {};
-        availableSlots.forEach(slot => {
+        matchingSlots.forEach(slot => {
           if (!groupedSlots[slot.date]) {
             groupedSlots[slot.date] = [];
           }
@@ -57,8 +65,9 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
       }
     };
 
+    setSelectedSlot(null);
     loadSlots();
-  }, [guideId]);
+  }, [guideId, category, duration]);
 
   const handleSlotClick = (slot: Slot) => {
     setSelectedSlot(slot);
@@ -107,7 +116,7 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
     return (
       <div className="slot-selection__empty">
         <Calendar className="slot-selection__empty-icon" size={40} />
-        <p>No slots available. Please check back later.</p>
+        <p>No {duration}-minute slots available for this session type. Please try another duration or check back later.</p>
       </div>
     );
   }
@@ -171,7 +180,7 @@ export default function SlotSelection({ guideId, guidePrice, onSlotSelect }: Slo
             <p className="slot-selection__summary-label">Fee</p>
             <p className="slot-selection__summary-price">
               <IndianRupee size={16} style={{ display: 'inline', marginRight: '2px' }} />
-              {selectedSlot.price || guidePrice}
+              {guidePrice}
             </p>
           </div>
         </div>

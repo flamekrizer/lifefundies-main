@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Heart, Instagram, Twitter, Linkedin, Youtube, Mail, Phone, MapPin } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import './Footer.css'
 
@@ -16,12 +15,16 @@ export default function Footer() {
             <p className="footer__tagline body-sm text-muted">
               India's most trusted holistic life-guidance platform. Empowering individuals across 18 life domains with clarity, confidence, and direction.
             </p>
-            <div className="footer__social">
-              <a href="https://www.instagram.com/lifefundies/" className="footer__social-link" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram size={18} /></a>
-              <a href="https://x.com/lifefundies" className="footer__social-link" aria-label="Twitter/X" target="_blank" rel="noopener noreferrer"><Twitter size={18} /></a>
-              <a href="https://www.linkedin.com/company/lifefundies/" className="footer__social-link" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><Linkedin size={18} /></a>
-              <a href="https://www.youtube.com/@LifeFundies" className="footer__social-link" aria-label="YouTube" target="_blank" rel="noopener noreferrer"><Youtube size={18} /></a>
-              <a href="mailto:hello@lifefundies.com" className="footer__social-link" aria-label="Email"><Mail size={18} /></a>
+            <div className="footer__badges" aria-label="Platform highlights">
+              <span>18 life domains</span>
+              <span>Sessions from ₹129</span>
+              <span>Cashfree secured</span>
+            </div>
+            <div className="footer__social" aria-label="Social links">
+              <a href="https://www.instagram.com/lifefundies/" className="footer__social-link" target="_blank" rel="noopener noreferrer">Instagram</a>
+              <a href="https://x.com/lifefundies" className="footer__social-link" target="_blank" rel="noopener noreferrer">X</a>
+              <a href="https://www.linkedin.com/company/lifefundies/" className="footer__social-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a href="https://www.youtube.com/@LifeFundies" className="footer__social-link" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
           </div>
 
@@ -30,8 +33,9 @@ export default function Footer() {
             <h4 className="footer__heading">Platform</h4>
             <nav aria-label="Platform links">
               <Link to="/mentors" className="footer__link">Find Mentors</Link>
+              <Link to="/services" className="footer__link">Products & Services</Link>
               <Link to="/community" className="footer__link">Community Forum</Link>
-              <Link to="/register" className="footer__link">Become a Mentor</Link>
+              <Link to="/mentor-register" className="footer__link">Become a Mentor</Link>
               <Link to="/#pricing" className="footer__link">Pricing</Link>
               <Link to="/#how-it-works" className="footer__link">How It Works</Link>
               <Link to="/faq" className="footer__link">FAQs</Link>
@@ -45,7 +49,7 @@ export default function Footer() {
             <nav aria-label="Domain links">
               {LIFE_DOMAINS.slice(0, 6).map(domain => (
                 <Link key={domain.id} to={`/mentors?domain=${domain.id}`} className="footer__link">
-                  <span>{domain.icon}</span> {domain.label}
+                  {domain.label}
                 </Link>
               ))}
             </nav>
@@ -56,21 +60,24 @@ export default function Footer() {
             <h4 className="footer__heading">Contact</h4>
             <div className="footer__contact">
               <a href="mailto:support@lifefundies.in" className="footer__contact-item">
-                <Mail size={16} /> support@lifefundies.in
+                <span>Email</span>
+                <strong>support@lifefundies.in</strong>
               </a>
               <a href="tel:+917055984498" className="footer__contact-item">
-                <Phone size={16} /> +91-7055984498
+                <span>Phone</span>
+                <strong>+91-7055984498</strong>
               </a>
               <div className="footer__contact-item">
-                <MapPin size={16} /> Online Services
+                <span>Mode</span>
+                <strong>Online Services</strong>
               </div>
             </div>
             <div className="footer__legal">
               <p className="body-sm text-muted">
-                <em>Registered as LifeFundies Private Limited (Proposed)</em>
+                <em>Registered as LifeFundies Private Limited</em>
               </p>
-              <p className="body-sm text-muted" style={{ marginTop: '0.5rem' }}>
-                Founder: Asmit Sharma, B.Tech CSE, Sharda University
+              <p className="body-sm text-muted">
+                Online guidance services across India.
               </p>
             </div>
           </div>
@@ -79,12 +86,12 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="footer__bottom">
           <p className="body-sm text-muted">
-            © 2025 LifeFundies Private Limited. Made with <Heart size={12} style={{ display: 'inline', color: 'var(--clr-accent)' }} /> for India's youth.
+            © 2025 LifeFundies Private Limited. Built for India's youth.
           </p>
           <div className="footer__bottom-links">
             <Link to="/privacy" className="footer__bottom-link">Privacy Policy</Link>
-            <Link to="/terms" className="footer__bottom-link">Terms of Service</Link>
-            <Link to="/refund" className="footer__bottom-link">Refund Policy</Link>
+            <Link to="/terms" className="footer__bottom-link">Terms & Conditions</Link>
+            <Link to="/refund" className="footer__bottom-link">Refunds & Cancellations</Link>
           </div>
         </div>
       </div>

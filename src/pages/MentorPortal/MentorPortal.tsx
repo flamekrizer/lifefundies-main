@@ -1,34 +1,36 @@
 import { useState, useEffect } from 'react'
-import { Calendar as CalendarIcon, Clock, Users, Star, XCircle, Edit3, Trash2, Video, Save } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Users, Star, XCircle, Edit3, Trash2, Video, Save, FileText, StickyNote, IndianRupee, CheckCircle } from 'lucide-react'
 import { useAuthStore } from '../../stores'
 import { getInitials } from '../../utils'
-import { 
-  acceptBookingRequest, 
-  declineBookingRequest, 
-  createGuideSlot, 
-  deleteGuideSlot, 
-  completeBookingSession, 
+import {
+  acceptBookingRequest,
+  declineBookingRequest,
+  createGuideSlot,
+  deleteGuideSlot,
+  completeBookingSessionWithSummary,
   getGuideBookings,
   getGuideSlotsAll,
-  getSessionsForGuide
+  getSessionsForGuide,
+  getGuideNotesForLFID,
+  getGuideSessionHistoryForLFID,
+  saveGuideSessionNote
 } from '../../lib/bookingRepository'
-import { updateMentorProfile } from '../../lib/userRepository'
+import { publishMentorGuideProfile, updateMentorProfile } from '../../lib/userRepository'
 import { MENTOR_CATEGORIES, getCategoryPrices, getSessionPrice, normalizeMentorCategories } from '../../lib/pricing'
 import VideoRoom from '../../components/VideoRoom'
-import './MentorPortal.css'
 
 export default function MentorPortalPage() {
   const { user } = useAuthStore()
-  
+
   const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'calendar' | 'earnings' | 'profile'>('overview')
   const [bookings, setBookings] = useState<any[]>([])
   const [slots, setSlots] = useState<any[]>([])
   const [sessions, setSessions] = useState<any[]>([])
-  
+
   const [loadingBookings, setLoadingBookings] = useState(true)
   const [loadingSlots, setLoadingSlots] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  
+
   // Slot management form state
   const [newSlotDate, setNewSlotDate] = useState('')
   const [newSlotTime, setNewSlotTime] = useState('10:00')
@@ -36,6 +38,12 @@ export default function MentorPortalPage() {
   const [newSlotCategory, setNewSlotCategory] = useState('peer-buddy')
   const [creatingSlot, setCreatingSlot] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<any | null>(null)
+  const [lfidNotes, setLfidNotes] = useState<any[]>([])
+  const [lfidHistory, setLfidHistory] = useState<any[]>([])
+  const [preparingSession, setPreparingSession] = useState(false)
+  const [privateNote, setPrivateNote] = useState('')
+  const [completionForm, setCompletionForm] = useState({ summary: '', recommendations: '', followUp: '' })
   const [profileForm, setProfileForm] = useState({
     photoURL: '',
     fullName: '',
@@ -48,7 +56,7 @@ export default function MentorPortalPage() {
     certifications: '',
     categories: ['peer-buddy'] as string[],
   })
-  
+
   // Video room state
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
@@ -68,7 +76,7 @@ export default function MentorPortalPage() {
     })
   }, [user])
 
- 
+
   const fetchPortalData = async () => {
     if (!user?.uid) return
     try {
@@ -94,8 +102,15 @@ export default function MentorPortalPage() {
     fetchPortalData()
   }, [user?.uid])
 
+  useEffect(() => {
+    if (!user?.uid || user.role !== 'mentor') return
+    publishMentorGuideProfile(user.uid, user).catch((error) => {
+      console.error('Failed to publish mentor profile:', error)
+    })
+  }, [user?.uid, user?.role, user?.displayName])
 
-  
+
+
   const handleAcceptRequest = async (bookingId: string) => {
     setActionLoading(bookingId)
     try {
@@ -122,11 +137,73 @@ export default function MentorPortalPage() {
     }
   }
 
-  const handleCompleteSession = async (bookingId: string, sessionId: string) => {
-    setActionLoading(bookingId)
+  const handleOpenPreparation = async (session: any) => {
+    if (!user?.uid || !session?.userId) return
+    setSelectedSession(session)
+    setPreparingSession(true)
     try {
-      await completeBookingSession(bookingId, sessionId)
-      alert('Session marked as completed successfully!')
+      const [notesData, historyData] = await Promise.all([
+        getGuideNotesForLFID(user.uid, session.userId),
+        getGuideSessionHistoryForLFID(user.uid, session.userId),
+      ])
+      setLfidNotes(notesData)
+      setLfidHistory(historyData)
+      setCompletionForm({
+        summary: session.completionSummary || '',
+        recommendations: session.recommendations || '',
+        followUp: session.followUpSuggestions || '',
+      })
+      setPrivateNote('')
+    } finally {
+      setPreparingSession(false)
+    }
+  }
+
+  const handleSavePrivateNote = async () => {
+    if (!user?.uid || !selectedSession?.userId || !privateNote.trim()) return
+    setActionLoading(selectedSession.id)
+    try {
+      await saveGuideSessionNote({
+        guideId: user.uid,
+        userId: selectedSession.userId,
+        bookingId: selectedSession.id,
+        sessionId: selectedSession.sessionId,
+        note: privateNote.trim(),
+      })
+      setPrivateNote('')
+      const notesData = await getGuideNotesForLFID(user.uid, selectedSession.userId)
+      setLfidNotes(notesData)
+    } catch (error) {
+      console.error('Failed to save private note:', error)
+      alert('Failed to save private note.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCompleteSession = async (session: any) => {
+    if (!user?.uid) return
+    if (!completionForm.summary.trim()) {
+      alert('Add a session summary before completing.')
+      return
+    }
+
+    setActionLoading(session.id)
+    try {
+      await completeBookingSessionWithSummary({
+        bookingId: session.id,
+        sessionId: session.sessionId,
+        guideId: user.uid,
+        userId: session.userId,
+        summary: completionForm.summary.trim(),
+        recommendations: completionForm.recommendations.trim(),
+        followUp: completionForm.followUp.trim(),
+        privateNote: privateNote.trim(),
+      })
+      alert('Session completed with summary and earnings marked pending.')
+      setSelectedSession(null)
+      setPrivateNote('')
+      setCompletionForm({ summary: '', recommendations: '', followUp: '' })
       await fetchPortalData()
     } catch (err) {
       console.error('Failed to complete session:', err)
@@ -134,6 +211,16 @@ export default function MentorPortalPage() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const handleQuickCompleteSession = async (session: any) => {
+    setSelectedSession(session)
+    setCompletionForm({
+      summary: session.completionSummary || '',
+      recommendations: session.recommendations || '',
+      followUp: session.followUpSuggestions || '',
+    })
+    await handleOpenPreparation(session)
   }
 
   const handleCreateSlot = async (e: React.FormEvent) => {
@@ -201,13 +288,13 @@ export default function MentorPortalPage() {
   }
 
   // ── Stats Calculations ───────────────────────────────
-  
+
   const activeBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'paid' || b.status === 'completed')
-  
+
   const totalSessionsThisMonth = activeBookings.length
-  
+
   const uniqueClientsCount = new Set(bookings.map(b => b.userId)).size
-  
+
   const ratedSessions = sessions.filter(s => s.userRating != null)
   const avgRating = ratedSessions.length > 0
     ? (ratedSessions.reduce((acc, s) => acc + s.userRating, 0) / ratedSessions.length).toFixed(1)
@@ -216,11 +303,18 @@ export default function MentorPortalPage() {
   const pendingRequests = bookings.filter(b => b.status === 'pending')
   const upcomingSessions = bookings.filter(b => b.status === 'confirmed' || b.status === 'paid')
   const completedSessions = bookings.filter(b => b.status === 'completed')
+  const todayKey = new Date().toISOString().split('T')[0]
+  const todaysSessions = upcomingSessions.filter(b => b.sessionDate === todayKey)
+  const pendingEarnings = completedSessions.reduce((sum, b) => sum + Number(b.earningAmount || b.finalAmount || b.price || 0), 0)
+  const guideStatus = (user as any)?.guideStatus || ((user as any)?.role === 'mentor' ? 'verified' : 'inactive')
+  const profileComplete = Boolean((user as any)?.bio && (user as any)?.expertise?.length && (user as any)?.languages?.length)
+  const isActiveGuide = profileComplete && slots.some(slot => slot.isActive !== false && slot.isBlocked !== true && !slot.isBooked)
 
   const stats = [
     { icon: CalendarIcon, label: 'Sessions Confirmed/Completed', value: String(totalSessionsThisMonth), color: 'var(--clr-primary)', change: 'Live' },
     { icon: Users, label: 'Total Clients', value: String(uniqueClientsCount), color: 'var(--clr-accent)', change: 'Live' },
     { icon: Star, label: 'Avg Rating', value: avgRating, color: 'var(--clr-secondary)', change: ratedSessions.length > 0 ? `${ratedSessions.length} ratings` : 'Default' },
+    { icon: IndianRupee, label: 'Pending Earnings', value: `Rs ${pendingEarnings}`, color: 'var(--clr-purple)', change: 'After completion' },
   ]
 
   return (
@@ -236,6 +330,25 @@ export default function MentorPortalPage() {
             <button className="btn btn-outline" id="edit-profile-btn" onClick={() => setActiveTab('profile')}>
               <Edit3 size={16} /> Manage Profile
             </button>
+          </div>
+
+          <div className="mentor-portal__stats animate-fadeInUp" style={{ marginBottom: 'var(--sp-6)' }}>
+            {[
+              { label: 'Verification', value: guideStatus === 'verified' || guideStatus === 'profile_complete' ? 'Verified' : 'Inactive', done: guideStatus !== 'inactive' },
+              { label: 'Profile', value: profileComplete ? 'Complete' : 'Needs setup', done: profileComplete },
+              { label: 'Availability', value: isActiveGuide ? 'Active' : 'Add slots', done: isActiveGuide },
+              { label: 'Privacy', value: 'LFID only', done: true },
+            ].map(item => (
+              <div key={item.label} className="mentor-stat-card">
+                <div className="mentor-stat-card__icon" style={{ background: item.done ? 'var(--clr-primary-glow)' : 'var(--clr-accent-glow)', color: item.done ? 'var(--clr-primary)' : 'var(--clr-accent-dark)' }}>
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <p className="mentor-stat-card__value" style={{ fontSize: '1rem' }}>{item.value}</p>
+                  <p className="body-sm text-muted">{item.label}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Tabs */}
@@ -282,14 +395,10 @@ export default function MentorPortalPage() {
                       pendingRequests.map(req => (
                         <div key={req.id} className="request-card" id={`request-${req.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                            {req.clientPhotoURL ? (
-                              <img src={req.clientPhotoURL} alt={req.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              getInitials(req.clientName || 'Client')
-                            )}
+                            {getInitials(req.lfid || req.clientName || 'LF')}
                           </div>
                           <div className="request-card__info">
-                            <p className="request-card__user">{req.clientName || `Client (${req.userId.substring(0, 6)})`}</p>
+                            <p className="request-card__user">{req.lfid || req.clientName}</p>
                             <div className="flex gap-3">
                               <span className="body-sm text-muted">{req.domain}</span>
                               <span className="body-sm text-muted"><Clock size={12} style={{ display: 'inline' }} /> {req.sessionDate}, {req.sessionTime}</span>
@@ -301,17 +410,17 @@ export default function MentorPortalPage() {
                             )}
                           </div>
                           <div className="request-card__actions">
-                            <button 
-                              className="btn btn-primary btn-sm" 
-                              onClick={() => handleAcceptRequest(req.id)} 
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleAcceptRequest(req.id)}
                               id={`accept-${req.id}`}
                               disabled={actionLoading === req.id}
                             >
                               Accept
                             </button>
-                            <button 
-                              className="btn btn-ghost btn-sm" 
-                              onClick={() => handleDeclineRequest(req.id)} 
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => handleDeclineRequest(req.id)}
                               id={`decline-${req.id}`}
                               disabled={actionLoading === req.id}
                             >
@@ -336,34 +445,38 @@ export default function MentorPortalPage() {
                       upcomingSessions.map(session => (
                         <div key={session.id} className="request-card" id={`upcoming-${session.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                            {session.clientPhotoURL ? (
-                              <img src={session.clientPhotoURL} alt={session.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              getInitials(session.clientName || 'Client')
-                            )}
+                            {getInitials(session.lfid || session.clientName || 'LF')}
                           </div>
                           <div className="request-card__info">
-                            <p className="request-card__user">{session.clientName || `Client (${session.userId.substring(0, 6)})`}</p>
+                            <p className="request-card__user">{session.lfid || session.clientName}</p>
                             <div className="flex gap-3">
                               <span className="body-sm text-muted">{session.domain}</span>
                               <span className="body-sm text-muted"><Clock size={12} style={{ display: 'inline' }} /> {session.sessionDate}, {session.sessionTime}</span>
                             </div>
+                            {session.issueSummary && <p className="body-sm text-muted" style={{ marginTop: 4 }}>{session.issueSummary}</p>}
                           </div>
                           <div className="request-card__actions" style={{ flexDirection: 'column', gap: '4px' }}>
-                            <button 
-                              className="btn btn-primary btn-sm" 
-                              onClick={() => setActiveSessionId(session.sessionId)} 
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => handleOpenPreparation(session)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <FileText size={14} /> Prepare
+                            </button>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => setActiveSessionId(session.sessionId)}
                               style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                             >
                               <Video size={14} /> Start Call
                             </button>
-                            <button 
-                              className="btn btn-outline btn-sm" 
-                              onClick={() => handleCompleteSession(session.id, session.sessionId)}
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => handleQuickCompleteSession(session)}
                               disabled={actionLoading === session.id}
                               style={{ fontSize: '0.75rem', height: '28px' }}
                             >
-                              Complete
+                              Complete Flow
                             </button>
                           </div>
                         </div>
@@ -372,6 +485,23 @@ export default function MentorPortalPage() {
                       <p className="text-center text-muted" style={{ padding: '2rem 0' }}>No upcoming sessions.</p>
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div className="portal-section animate-fadeInUp">
+                <h2 className="heading-2">Today's Sessions</h2>
+                <div className="flex-col gap-3" style={{ marginTop: 'var(--sp-4)' }}>
+                  {todaysSessions.length > 0 ? todaysSessions.map(session => (
+                    <div key={`today-${session.id}`} className="request-card">
+                      <div className="request-card__info">
+                        <p className="request-card__user">{session.lfid || session.clientName}</p>
+                        <p className="body-sm text-muted">{session.domain} · {session.sessionTime}</p>
+                      </div>
+                      <button className="btn btn-outline btn-sm" onClick={() => handleOpenPreparation(session)}>Review LFID Details</button>
+                    </div>
+                  )) : (
+                    <p className="text-center text-muted" style={{ padding: '1rem 0' }}>No sessions scheduled today.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -388,14 +518,10 @@ export default function MentorPortalPage() {
                   bookings.map(req => (
                     <div key={req.id} className="request-card" id={`req-all-${req.id}`}>
                       <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
-                        {req.clientPhotoURL ? (
-                          <img src={req.clientPhotoURL} alt={req.clientName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          getInitials(req.clientName || 'Client')
-                        )}
+                        {getInitials(req.lfid || req.clientName || 'LF')}
                       </div>
                       <div className="request-card__info">
-                        <p className="request-card__user">{req.clientName || `Client (${req.userId.substring(0, 6)})`}</p>
+                        <p className="request-card__user">{req.lfid || req.clientName}</p>
                         <div className="flex gap-3">
                           <span className="body-sm text-muted">{req.domain}</span>
                           <span className="body-sm text-muted">{req.sessionDate}, {req.sessionTime}</span>
@@ -425,7 +551,7 @@ export default function MentorPortalPage() {
               <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
                 <h2 className="heading-2">Manage Availability Slots</h2>
               </div>
-              
+
               {/* Slot Creation Form */}
               <form onSubmit={handleCreateSlot} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)', background: 'var(--clr-bg-alt)', padding: 'var(--sp-4)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--clr-border)' }}>
                 <div className="form-group" style={{ margin: 0 }}>
@@ -487,10 +613,10 @@ export default function MentorPortalPage() {
                           {slot.isBooked ? 'Booked' : 'Available'}
                         </span>
                         {!slot.isBooked && (
-                          <button 
-                            type="button" 
-                            className="btn btn-ghost btn-sm" 
-                            onClick={() => handleDeleteSlot(slot.id)} 
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => handleDeleteSlot(slot.id)}
                             style={{ color: 'var(--clr-accent)', borderColor: 'var(--clr-accent)', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
                             <Trash2 size={14} /> Delete
@@ -510,7 +636,7 @@ export default function MentorPortalPage() {
           {activeTab === 'earnings' && (
             <div className="portal-section animate-fadeInUp" style={{ marginTop: 'var(--sp-6)' }}>
               <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
-                <h2 className="heading-2">Session Records</h2>
+                <h2 className="heading-2">Earnings</h2>
               </div>
 
               <div className="earnings-summary" style={{ marginBottom: 'var(--sp-6)' }}>
@@ -519,17 +645,17 @@ export default function MentorPortalPage() {
                   <p className="earnings-summary__value">{completedSessions.length}</p>
                 </div>
                 <div className="earnings-summary__item">
-                  <p className="body-sm text-muted">Upcoming Sessions</p>
-                  <p className="earnings-summary__value text-gradient">{upcomingSessions.length}</p>
+                  <p className="body-sm text-muted">Pending Earnings</p>
+                  <p className="earnings-summary__value text-gradient">Rs {pendingEarnings}</p>
                 </div>
                 <div className="earnings-summary__item">
-                  <p className="body-sm text-muted">Confirmed Sessions</p>
-                  <p className="earnings-summary__value">{activeBookings.length}</p>
+                  <p className="body-sm text-muted">Available Balance</p>
+                  <p className="earnings-summary__value">Rs 0</p>
                 </div>
                 <div className="earnings-summary__item">
-                  <p className="body-sm text-muted">Pending Requests</p>
+                  <p className="body-sm text-muted">Payout Status</p>
                   <p className="earnings-summary__value" style={{ color: 'var(--clr-secondary)' }}>
-                    {pendingRequests.length}
+                    Pending
                   </p>
                 </div>
               </div>
@@ -541,11 +667,12 @@ export default function MentorPortalPage() {
                     <div key={b.id} className="request-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <p style={{ fontWeight: 600 }}>{b.domain}</p>
-                        <p className="body-sm text-muted">Client: {b.clientName || `ID ${b.userId.substring(0, 6)}`} · Date: {b.sessionDate}</p>
+                        <p className="body-sm text-muted">LFID: {b.lfid || b.clientName} · Date: {b.sessionDate}</p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontWeight: 700 }}>Rs {b.earningAmount || b.finalAmount || b.price || 0}</p>
                         <span className={`badge ${b.status === 'completed' ? 'badge-primary' : 'badge-secondary'}`} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
-                          {b.status}
+                          {b.status === 'completed' ? (b.earningStatus || 'pending earning') : b.status}
                         </span>
                       </div>
                     </div>
@@ -561,7 +688,7 @@ export default function MentorPortalPage() {
             <div className="portal-section animate-fadeInUp" style={{ marginTop: 'var(--sp-6)' }}>
               <div className="flex-between" style={{ marginBottom: 'var(--sp-4)' }}>
                 <h2 className="heading-2">Manage Profile</h2>
-                <span className="badge badge-primary">Real-time Firebase profile</span>
+                <span className="badge badge-primary">{profileComplete ? 'Profile Complete' : 'Complete required sections'}</span>
               </div>
               <form onSubmit={handleSaveProfile} className="flex-col gap-4">
                 <div className="auth-form-grid">
@@ -628,22 +755,135 @@ export default function MentorPortalPage() {
         </div>
       </div>
 
+      {selectedSession && (
+        <div className="video-modal-overlay">
+          <div className="video-modal-card animate-fadeInUp" style={{ maxWidth: 960 }}>
+            <div className="video-modal-header">
+              <span className="video-modal-title">LFID Preparation · {selectedSession.lfid || selectedSession.clientName}</span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm video-modal-close-btn"
+                onClick={() => setSelectedSession(null)}
+                aria-label="Close preparation panel"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="mentor-reviews" style={{ padding: 'var(--sp-4)', maxHeight: '76vh', overflow: 'auto' }}>
+              <section className="mentor-review-form">
+                <h3 className="heading-3">Session Context</h3>
+                {preparingSession ? (
+                  <p className="body-sm text-muted">Loading LFID history...</p>
+                ) : (
+                  <>
+                    <p className="body-sm text-muted"><strong>LFID:</strong> {selectedSession.lfid || selectedSession.clientName}</p>
+                    <p className="body-sm text-muted"><strong>Domain:</strong> {selectedSession.domain}</p>
+                    <p className="body-sm text-muted"><strong>Date:</strong> {selectedSession.sessionDate}, {selectedSession.sessionTime}</p>
+                    <p className="body-sm text-muted"><strong>Query Summary:</strong> {selectedSession.issueSummary || selectedSession.userNotes || 'No summary provided.'}</p>
+                  </>
+                )}
+
+                <div className="form-group" style={{ marginTop: 'var(--sp-4)' }}>
+                  <label className="form-label" htmlFor="private-note">Private Guide Note</label>
+                  <textarea
+                    id="private-note"
+                    className="form-input"
+                    rows={4}
+                    value={privateNote}
+                    onChange={event => setPrivateNote(event.target.value)}
+                    placeholder="Notes are private and attached only to this LFID."
+                  />
+                </div>
+                <button className="btn btn-outline btn-sm" type="button" onClick={handleSavePrivateNote} disabled={!privateNote.trim() || actionLoading === selectedSession.id}>
+                  <StickyNote size={14} /> Save Private Note
+                </button>
+
+                <div className="form-group" style={{ marginTop: 'var(--sp-6)' }}>
+                  <label className="form-label" htmlFor="completion-summary">Completion Summary</label>
+                  <textarea
+                    id="completion-summary"
+                    className="form-input"
+                    rows={3}
+                    value={completionForm.summary}
+                    onChange={event => setCompletionForm(prev => ({ ...prev, summary: event.target.value }))}
+                    placeholder="Key points discussed in the session."
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="completion-recommendations">Recommendations</label>
+                  <textarea
+                    id="completion-recommendations"
+                    className="form-input"
+                    rows={3}
+                    value={completionForm.recommendations}
+                    onChange={event => setCompletionForm(prev => ({ ...prev, recommendations: event.target.value }))}
+                    placeholder="Resources, action steps, or guidance for the user."
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="completion-follow-up">Follow-up Suggestions</label>
+                  <textarea
+                    id="completion-follow-up"
+                    className="form-input"
+                    rows={2}
+                    value={completionForm.followUp}
+                    onChange={event => setCompletionForm(prev => ({ ...prev, followUp: event.target.value }))}
+                    placeholder="Suggested next topic or session frequency."
+                  />
+                </div>
+                <button className="btn btn-primary" type="button" onClick={() => handleCompleteSession(selectedSession)} disabled={actionLoading === selectedSession.id}>
+                  Complete Session
+                </button>
+              </section>
+
+              <section className="mentor-reviews__list">
+                <h3 className="heading-3">Previous Sessions</h3>
+                {lfidHistory.length > 0 ? lfidHistory.map(item => (
+                  <article className="mentor-review" key={item.id}>
+                    <div className="mentor-review__header">
+                      <span className="body-sm" style={{ fontWeight: 700 }}>{item.sessionDate || 'No date'} · {item.status}</span>
+                      <span className="body-sm text-subtle">{item.domain}</span>
+                    </div>
+                    <p className="body-sm text-muted">{item.issueSummary || item.completionSummary || 'No summary saved.'}</p>
+                  </article>
+                )) : (
+                  <p className="body-sm text-muted">No previous sessions for this LFID.</p>
+                )}
+
+                <h3 className="heading-3" style={{ marginTop: 'var(--sp-4)' }}>Private Notes</h3>
+                {lfidNotes.length > 0 ? lfidNotes.map(note => (
+                  <article className="mentor-review" key={note.id}>
+                    <div className="mentor-review__header">
+                      <span className="body-sm" style={{ fontWeight: 700 }}>Private note</span>
+                      <span className="body-sm text-subtle">{note.createdAt ? new Date(note.createdAt).toLocaleDateString() : 'Recently'}</span>
+                    </div>
+                    <p className="body-sm text-muted">{note.note}</p>
+                  </article>
+                )) : (
+                  <p className="body-sm text-muted">No private notes for this LFID yet.</p>
+                )}
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Call Modal */}
       {activeSessionId && (
         <div className="video-modal-overlay">
           <div className="video-modal-card animate-fadeInUp">
             <div className="video-modal-header">
               <span className="video-modal-title">Live Video Room — Session Call</span>
-              <button 
+              <button
                 type="button"
-                className="btn btn-ghost btn-sm video-modal-close-btn" 
+                className="btn btn-ghost btn-sm video-modal-close-btn"
                 onClick={() => setActiveSessionId(null)}
                 aria-label="Close video room"
               >
                 <XCircle size={20} />
               </button>
             </div>
-            <VideoRoom 
+            <VideoRoom
               sessionId={activeSessionId}
               userName={user?.displayName || 'Mentor'}
               guideName="Client"

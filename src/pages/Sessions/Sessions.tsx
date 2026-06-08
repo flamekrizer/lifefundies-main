@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar, Clock, BookOpen, Star, MessageSquare, Video, X } from 'lucide-react'
-import { getInitials, MOCK_MENTORS } from '../../utils'
+import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
 import { subscribeToUserBookings } from '../../lib/bookingRepository'
 import { rateSessionAndCreateReview } from '../../lib/communityRepository'
 import VideoRoom from '../../components/VideoRoom'
-import './Sessions.css'
 
 export default function SessionsPage() {
   const { user } = useAuthStore()
@@ -14,7 +13,7 @@ export default function SessionsPage() {
   const [ratings, setRatings] = useState<Record<string, number>>({})
   
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [sessionMentorName, setSessionMentorName] = useState('Priya Sharma')
+  const [sessionMentorName, setSessionMentorName] = useState('LifeFundies Mentor')
   const [bookings, setBookings] = useState<any[]>([])
   const [loadingBookings, setLoadingBookings] = useState(false)
 
@@ -55,32 +54,30 @@ export default function SessionsPage() {
   }, [user?.uid])
 
   const upcomingSessions = bookings
-    .filter(b => b.status === 'confirmed' || b.status === 'pending')
+    .filter(b => b.status === 'pending' || b.status === 'confirmed')
     .map(b => {
-      const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
         sessionId: b.sessionId || null,
-        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
-        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
+        mentor: b.mentorName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         time: b.sessionTime,
         duration: b.sessionDuration,
         status: b.status,
         price: b.price || b.finalAmount,
-        meetingLink: b.status === 'confirmed' ? '#' : null
+        meetingLink: '#'
       }
     })
 
   const pastSessions = bookings
     .filter(b => b.status === 'completed')
     .map(b => {
-      const mentor = MOCK_MENTORS.find(m => m.uid === b.guideId)
       return {
         id: b.id || b.bookingId,
-        mentor: b.mentorName || mentor?.displayName || 'LifeFundies Mentor',
-        mentorPhotoURL: b.mentorPhotoURL || mentor?.photoURL || '',
+        mentor: b.mentorName || 'LifeFundies Mentor',
+        mentorPhotoURL: b.mentorPhotoURL || '',
         domain: b.domain,
         date: b.sessionDate,
         duration: b.sessionDuration,
@@ -97,6 +94,11 @@ export default function SessionsPage() {
   const handleJoinSession = (mentorName: string, id: string) => {
     setSessionMentorName(mentorName)
     setActiveSessionId(id)
+  }
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'pending') return 'Awaiting mentor'
+    return status
   }
 
   return (
@@ -124,6 +126,7 @@ export default function SessionsPage() {
 
           {activeTab === 'upcoming' && (
             <div className="sessions-list animate-fadeInUp delay-200">
+              {loadingBookings && <p className="text-muted">Loading sessions...</p>}
               {displayUpcoming.map(session => (
                 <div key={session.id} className="session-detail-card" id={`session-detail-${session.id}`}>
                   <div className="session-detail-card__left">
@@ -135,7 +138,7 @@ export default function SessionsPage() {
                       )}
                     </div>
                     <span className={`badge ${session.status === 'confirmed' ? 'badge-primary' : 'badge-secondary'}`}>
-                      {session.status}
+                      {getStatusLabel(session.status)}
                     </span>
                   </div>
                   <div className="session-detail-card__info">
@@ -153,6 +156,7 @@ export default function SessionsPage() {
                       <button 
                         className="btn btn-primary" 
                         onClick={() => handleJoinSession(session.mentor, session.sessionId || session.id)}
+                        disabled={!session.sessionId}
                         id={`join-${session.id}`}
                       >
                         <Video size={16} /> Join Session

@@ -23,7 +23,6 @@ export const MENTOR_CATEGORIES: MentorCategory[] = [
     label: 'Peer Buddy',
     prices: [
       { duration: 30, price: 129 },
-      { duration: 45, price: 149 },
     ],
   },
   {
@@ -35,7 +34,7 @@ export const MENTOR_CATEGORIES: MentorCategory[] = [
   },
   {
     id: 'senior-advisory-group',
-    label: 'Senior Advisory Group',
+    label: 'Senior Advisor',
     prices: [
       { duration: 45, price: 299 },
     ],
@@ -43,24 +42,24 @@ export const MENTOR_CATEGORIES: MentorCategory[] = [
 ]
 
 export const LIFE_DOMAINS = [
-  { id: 'career', label: 'Career & Purpose', icon: '🎯', color: '#0D7377', description: 'Find your professional direction and calling' },
-  { id: 'emotional', label: 'Emotional Well-being', icon: '💚', color: '#10B981', description: 'Build emotional strength and resilience' },
-  { id: 'relationships', label: 'Relationships', icon: '❤️', color: '#FF6B6B', description: 'Navigate bonds, love, and connections' },
-  { id: 'confidence', label: 'Confidence & Self-Image', icon: '✨', color: '#F7B731', description: 'Unlock your self-worth and inner power' },
-  { id: 'communication', label: 'Communication', icon: '💬', color: '#7C3AED', description: 'Express yourself with clarity and impact' },
-  { id: 'productivity', label: 'Productivity & Time', icon: '⚡', color: '#0D7377', description: 'Master your focus, habits, and schedule' },
-  { id: 'stress', label: 'Stress & Overthinking', icon: '🧘', color: '#14A9AE', description: 'Quiet the mental noise and find peace' },
-  { id: 'decisions', label: 'Decision Making', icon: '🔮', color: '#FF6B6B', description: 'Make confident choices without regret' },
-  { id: 'motivation', label: 'Motivation & Discipline', icon: '🔥', color: '#F7B731', description: 'Stay driven and build lasting discipline' },
-  { id: 'growth', label: 'Personal Growth', icon: '🌱', color: '#10B981', description: 'Evolve into your best version every day' },
-  { id: 'social', label: 'Social & Family Dynamics', icon: '👨‍👩‍👧', color: '#7C3AED', description: 'Navigate family and social relationships' },
-  { id: 'academic', label: 'Academic Direction', icon: '📚', color: '#0D7377', description: 'Make smart academic and learning choices' },
-  { id: 'professional', label: 'Professional Development', icon: '💼', color: '#14A9AE', description: 'Grow your skills and workplace presence' },
-  { id: 'lifestyle', label: 'Lifestyle & Habits', icon: '🌅', color: '#FF6B6B', description: 'Design a lifestyle that works for you' },
-  { id: 'transitions', label: 'Life Transitions', icon: '🦋', color: '#F7B731', description: 'Navigate change and new life chapters' },
-  { id: 'values', label: 'Values & Identity', icon: '🧭', color: '#7C3AED', description: 'Understand who you are and what matters' },
-  { id: 'financial', label: 'Financial Awareness', icon: '💰', color: '#10B981', description: 'Build financial literacy and smart habits' },
-  { id: 'clarity', label: 'Overall Life Clarity', icon: '🌟', color: '#0D7377', description: 'Bring structure and meaning to your life' },
+  { id: 'career', color: '#2563EB', label: 'Career & Profession', description: 'Job growth, professional development, workplace success, and career planning.' },
+  { id: 'emotional', color: '#7C3AED', label: 'Mental Well-being', description: 'Managing stress, anxiety, focus, emotional balance, and mental resilience.' },
+  { id: 'relationships', color: '#E11D48', label: 'Relationships', description: 'Building strong bonds with family members through love, trust, and support.' },
+  { id: 'confidence', color: '#16A34A', label: 'Health & Fitness', description: 'Physical health, nutrition, exercise, sleep, and overall body wellness.' },
+  { id: 'communication', color: '#0891B2', label: 'Education & Learning', description: 'Acquiring knowledge, skills, certifications, academic growth, and lifelong learning.' },
+  { id: 'productivity', color: '#EA580C', label: 'Business & Entrepreneurship', description: 'Building ventures, innovation, leadership, business strategy, and financial sustainability.' },
+  { id: 'stress', color: '#CA8A04', label: 'Finance & Wealth',  description: 'Earning, saving, investing, budgeting, and achieving financial security.' },
+  { id: 'decisions', color: '#DB2777', label: 'Love & Intimacy', description: 'Romantic relationships, emotional connection, trust, compatibility, and partnership growth.' },
+  { id: 'motivation', color: '#0D9488', label: 'Social Life & Networking', description: 'Friendships, communication skills, networking, and social engagement.' },
+  { id: 'growth', color: '#65A30D', label: 'Personal Growth', description: 'Self-improvement, confidence, discipline, productivity, and character development.' },
+  { id: 'social', color: '#8B5CF6', label: 'Spirituality & Purpose', description: 'Finding inner peace, values, purpose, mindfulness, and spiritual growth.' },
+  { id: 'academic', color: '#0284C7', label: 'Technology & Digital Life', description: 'Managing digital tools, online presence, technology usage, and digital productivity.' },
+  { id: 'professional', color: '#B45309', label: 'Family Responsibilities', description: 'Managing duties towards parents, siblings, children, and household responsibilities.' },
+  { id: 'lifestyle', color: '#9333EA', label: 'Creativity & Innovation', description: 'Expressing ideas through art, writing, design, innovation, and creative thinking.' },
+  { id: 'transitions', color: '#F97316', label: 'Entertainment & Fun', description: 'Recreation, hobbies, leisure activities, enjoyment, and maintaining life balance.' },
+  { id: 'values', color: '#059669', label: 'Society & Contribution', description: 'Giving back to society through volunteering, social impact, mentorship, and community service.' },
+  { id: 'financial', color: '#64748B', label: 'Self-Identity', description: 'Understanding personal values, beliefs, strengths, weaknesses, and authentic self.' },
+  { id: 'clarity', color: '#D97706', label: 'Dreams & Aspirations', description: 'Long-term goals, ambitions, vision, life mission, and legacy building.' },
 ] as const
 
 export type DomainId = typeof LIFE_DOMAINS[number]['id']

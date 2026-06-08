@@ -4,7 +4,6 @@ import { db } from '../../lib/firebase'
 import { useAuthStore } from '../../stores'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
 import { Check, Mail, MessageSquare, Bell } from 'lucide-react'
-import './Settings.css'
 
 export default function SettingsPage() {
   const { user, setUser } = useAuthStore()
@@ -284,7 +283,6 @@ export default function SettingsPage() {
                             onClick={() => toggleDomain(domain.id)}
                             style={{ margin: 0 }}
                           >
-                            <span className="ob-chip__icon">{domain.icon}</span>
                             <span className="ob-chip__label">{domain.label}</span>
                             {isSelected && <Check size={12} style={{ marginLeft: 'var(--sp-1)' }} />}
                           </button>

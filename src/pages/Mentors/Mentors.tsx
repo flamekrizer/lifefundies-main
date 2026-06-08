@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { Search, Filter, Star, Users, CheckCircle, X, Heart } from 'lucide-react'
 import { LIFE_DOMAINS, type DomainId } from '../../types'
-import { MOCK_MENTORS, formatCurrency, getInitials } from '../../utils'
+import { formatCurrency, getInitials } from '../../utils'
 import { MENTOR_CATEGORIES, getLowestCategoryPrice, normalizeMentorCategories } from '../../lib/pricing'
 import BookingModal from '../../components/BookingModal'
 import { useAuthStore } from '../../stores'
 import { addReviewAndUpvoteMentor as addReview, getMentorReviews } from '../../lib/communityRepository'
 import { subscribeToMentors, updateUserMentorInterests } from '../../lib/userRepository'
-import './Mentors.css'
 
 export default function MentorsPage() {
   const [search, setSearch] = useState('')
@@ -28,7 +27,7 @@ export default function MentorsPage() {
   const [reviewMentorId, setReviewMentorId] = useState<string | null>(null)
   const { user, setAuthModalOpen, setUser } = useAuthStore()
 
-  const [mentors, setMentors] = useState<any[]>(MOCK_MENTORS)
+  const [mentors, setMentors] = useState<any[]>([])
   const [loadingMentors, setLoadingMentors] = useState(false)
 
   // Sync selected domain state with search parameter changes
@@ -45,9 +44,7 @@ export default function MentorsPage() {
   useEffect(() => {
     setLoadingMentors(true)
     const unsubscribe = subscribeToMentors((dbMentors) => {
-      if (dbMentors.length > 0) {
-        setMentors(dbMentors.map(m => ({ ...m, id: m.uid })))
-      }
+      setMentors(dbMentors.map(m => ({ ...m, id: m.uid })))
       setLoadingMentors(false)
     })
 
@@ -98,7 +95,7 @@ export default function MentorsPage() {
     const languages = m.languages || []
     const qualification = m.qualification || m.education || ''
     const yearsOfExperience = Number(m.yearsOfExperience || 0)
-    const sessionPrice = m.sessionPrice || m.price || 299
+    const sessionPrice = m.sessionPrice || m.price || 129
 
     const matchSearch = !search || displayName.toLowerCase().includes(search.toLowerCase()) ||
       bio.toLowerCase().includes(search.toLowerCase()) || expertise.some((e: string) => e.toLowerCase().includes(search.toLowerCase()))
@@ -178,7 +175,7 @@ export default function MentorsPage() {
                       onClick={() => setSelectedDomain(selectedDomain === d.id ? '' : d.id)}
                       id={`domain-filter-${d.id}`}
                     >
-                      {d.icon} {d.label}
+                      {d.label}
                     </button>
                   ))}
                 </div>
@@ -188,9 +185,9 @@ export default function MentorsPage() {
                 <div className="mentors-filters__chips">
                   {[
                     { id: 'all', label: 'All Prices' },
-                    { id: 'budget', label: 'Up to Rs 149' },
-                    { id: 'mid', label: 'Rs 150-Rs 199' },
-                    { id: 'premium', label: 'Rs 200+' },
+                    { id: 'budget', label: 'Rs 129' },
+                    { id: 'mid', label: 'Rs 199' },
+                    { id: 'premium', label: 'Rs 299' },
                   ].map(p => (
                     <button
                       key={p.id}
@@ -290,7 +287,7 @@ export default function MentorsPage() {
                           const domain = LIFE_DOMAINS.find(x => x.id === d)
                           return domain ? (
                             <span key={d} className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
-                              {domain.icon} {domain.label}
+                              {domain.label}
                             </span>
                           ) : null
                         })}

@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
 } from 'firebase/auth'
+import { generateLFID } from '../utils/generateLFID'
 import { auth } from './firebase'
 import type { User as UserType } from '../types'
 import { createUserDoc, getUserDoc, subscribeToUserDoc } from './userRepository'
@@ -24,6 +25,7 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
 
     const newUser: UserType = {
       uid: firebaseUser.uid,
+      lfId: generateLFID(firebaseUser.uid),
       displayName,
       email,
       phone,
@@ -53,6 +55,7 @@ export const signInWithEmail = async (email: string, password: string, selectedR
     if (!userData) {
       const newUser: UserType = {
         uid: firebaseUser.uid,
+        lfId: generateLFID(firebaseUser.uid),
         displayName: firebaseUser.displayName || 'User',
         email: firebaseUser.email || email,
         phone: firebaseUser.phoneNumber || '',
@@ -72,6 +75,7 @@ export const signInWithEmail = async (email: string, password: string, selectedR
 
     const loggedInUser: UserType = {
       uid: firebaseUser.uid,
+      lfId: userData.lfId || generateLFID(firebaseUser.uid),
       displayName: firebaseUser.displayName || userData.displayName || 'User',
       email: firebaseUser.email || email,
       phone: userData.phone || firebaseUser.phoneNumber || '',
@@ -101,6 +105,7 @@ export const signInWithGoogle = async (role: 'user' | 'mentor' = 'user') => {
     if (!loggedInUser) {
       const newUser: UserType = {
         uid: firebaseUser.uid,
+        lfId: generateLFID(firebaseUser.uid),
         displayName: firebaseUser.displayName || 'Google User',
         email: firebaseUser.email || '',
         phone: firebaseUser.phoneNumber || '',
@@ -139,6 +144,7 @@ export const signInAnonymously = async () => {
 
     const newUser: UserType = {
       uid: firebaseUser.uid,
+      lfId: generateLFID(firebaseUser.uid),
       displayName: 'Anonymous User',
       email: '',
       role: 'user',
@@ -195,6 +201,7 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
           // Create user doc if first login
           const newUser: UserType = {
             uid: firebaseUser.uid,
+            lfId: generateLFID(firebaseUser.uid),
             displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
             email: firebaseUser.email || '',
             phone: firebaseUser.phoneNumber || '',

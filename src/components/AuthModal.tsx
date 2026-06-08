@@ -4,7 +4,6 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield, X, Loader } f
 import { useAuthStore } from '../stores'
 import type { User as UserType } from '../types'
 import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously } from '../lib/authService'
-import '../pages/Auth/Auth.css'
 
 export default function AuthModal() {
   const { authModalOpen, setAuthModalOpen, setUser } = useAuthStore()
@@ -67,6 +66,12 @@ export default function AuthModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isLogin && role === 'mentor') {
+      setAuthModalOpen(false)
+      navigate('/mentor-register')
+      return
+    }
+
     setLoading(true)
     setError('')
     try {
@@ -75,7 +80,7 @@ export default function AuthModal() {
       if (isLogin) {
         loggedInUser = await signInWithEmail(email, password, role)
       } else {
-        loggedInUser = await signUpWithEmail(email, password, name, phone, role)
+        loggedInUser = await signUpWithEmail(email, password, name, phone, 'user')
       }
       
       setUser(loggedInUser)
@@ -186,7 +191,7 @@ export default function AuthModal() {
               <span className="role-btn__icon">👨‍💼</span>
               <div>
                 <p className="role-btn__label">Mentor</p>
-                <p className="body-sm text-muted">I want to guide</p>
+                <p className="body-sm text-muted">{isLogin ? 'I want to guide' : 'Apply for approval'}</p>
               </div>
             </button>
           </div>
@@ -299,7 +304,7 @@ export default function AuthModal() {
                 <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
+                  {!isLogin && role === 'mentor' ? 'Apply as Mentor' : isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
                 </>
               )}
             </button>
