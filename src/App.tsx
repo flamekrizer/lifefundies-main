@@ -61,13 +61,27 @@ export default function App() {
   const { setNotificationsList } = useAppStore()
 
   useEffect(() => {
+    let authResolved = false
+    const loadingFallback = window.setTimeout(() => {
+      if (!authResolved) {
+        console.warn('Auth initialization timed out. Continuing without a signed-in user.')
+        setUser(null)
+        setLoading(false)
+      }
+    }, 5000)
+
     // Set up auth state listener
     const unsubscribe = onAuthStateChange((user) => {
+      authResolved = true
+      window.clearTimeout(loadingFallback)
       setUser(user)
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      window.clearTimeout(loadingFallback)
+      unsubscribe()
+    }
   }, [setUser, setLoading])
 
   useEffect(() => {

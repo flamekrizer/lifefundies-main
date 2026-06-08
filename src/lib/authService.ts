@@ -212,15 +212,31 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
             createdAt: new Date(),
           }
           await createUserDoc(newUser)
+          userData = newUser
         }
+
+        // Unlock the app immediately. Firestore realtime subscriptions can be
+        // delayed by network/rules issues, but the shell should still render.
+        callback(userData)
 
         // Subscribe to real-time user doc updates (role changes, profile edits)
         unsubscribeUserDoc = subscribeToUserDoc(firebaseUser.uid, (user) => {
-          callback(user)
+          callback(user || userData)
         })
       } catch (error) {
         console.error('Error fetching user data:', error)
-        callback(null)
+        callback({
+          uid: firebaseUser.uid,
+          lfId: generateLFID(firebaseUser.uid),
+          displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
+          email: firebaseUser.email || '',
+          phone: firebaseUser.phoneNumber || '',
+          role: 'user',
+          domains: [],
+          isAnonymous: firebaseUser.isAnonymous,
+          onboardingComplete: false,
+          createdAt: new Date(),
+        })
       }
     } else {
       // User signed out — callback(null) clears auth store
