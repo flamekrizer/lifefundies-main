@@ -92,7 +92,7 @@ export default function Navbar() {
       <div className="container navbar__inner">
         {/* Logo */}
         <Link to="/" className="navbar__logo" aria-label="LifeFundies Home">
-          <img className="brand-logo navbar__brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '40px', objectFit: 'contain', display: 'block' }} />
+          <img className="brand-logo navbar__brand-logo" src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="LifeFundies Logo" style={{ height: '40px', objectFit: 'contain', display: 'block' }} />
         </Link>
 
         {/* Desktop Nav */}

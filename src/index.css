@@ -167,8 +167,12 @@ img, video { max-width: 100%; display: block; }
 }
 
 :root[data-theme='dark'] .brand-logo {
-  content: url('/logo-dark.png');
   filter: drop-shadow(0 10px 24px rgba(37, 99, 235, 0.18));
+}
+
+:root[data-theme='dark'] .footer__brand-logo,
+:root[data-theme='dark'] .auth-brand-logo {
+  content: url('/logo-dark.png');
 }
 
 .navbar__brand-logo,
