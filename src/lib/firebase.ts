@@ -4,12 +4,12 @@ import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'missing-firebase-api-key',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'missing-firebase-auth-domain',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'missing-firebase-project-id',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'missing-firebase-storage-bucket',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'missing-firebase-sender-id',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'missing-firebase-app-id'
 };
 
 const requiredFirebaseVars = [
@@ -23,9 +23,9 @@ const requiredFirebaseVars = [
 
 const missingVars = requiredFirebaseVars.filter(v => !v.value).map(v => v.key)
 if (missingVars.length) {
-  throw new Error(
+  console.error(
     `Missing Firebase environment variables: ${missingVars.join(', ')}.\n` +
-    `Copy .env.example to .env.local and add your Firebase project values, then restart the dev server.`
+    `Add them in Hostinger environment variables and rebuild the app.`
   )
 }
 
