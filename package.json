@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:hostinger": "npm run build",
+    "package:hostinger": "npm run build && cd dist && zip -r ../lifefundies-hostinger.zip .",
     "postbuild": "node scripts/create-spa-route-files.cjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
