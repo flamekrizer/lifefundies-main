@@ -11,15 +11,15 @@ import { callIRA, getIRAStatus } from '../../lib/iraClient'
 const DOMAIN_IMAGES: Record<string, string> = {
   career: '/All The Hints In Your Natal Chart That Can Help You Crystalize Your Career and Purpose  — Holisticism.jpg',
   emotional: '/Inner peace.jpg',
-  relationships: '/Family.jpg',
+  relationships: '/relo.jpg',
   confidence: '/Health & fitness.jpg',
   communication: '/learning 2.jpg',
   productivity: '/Is content marketing different from SEO or are….jpg',
   stress: '/Financial.jpg',
   decisions: '/You and Me💕.jpg',
-  motivation: '/Dreams fuel success by expanding possibilities….jpg',
+  motivation: '/Social life.jpg',
   growth: '/Personal Growth.jpeg',
-  social: '/Social life.jpg',
+  social: '/sprituality.jpg',
   academic: '/Technology.jpg',
   professional: '/Family 2.jpg',
   lifestyle: '/Creativity.jpg',
@@ -516,7 +516,7 @@ function HeroSection() {
             </div>
             <div>
               <div className="stars">{Array.from({ length: 5 }).map((_, i) => <span key={i} className="star">★</span>)}</div>
-              <p className="body-sm text-muted">Trusted by <strong>2,000+</strong> students & professionals</p>
+              <p className="body-sm text-muted">Trusted by <strong>550+</strong> students & professionals</p>
             </div>
           </div>
         </div>
@@ -580,8 +580,8 @@ function StatsBar() {
     { value: '18', label: 'Life Domains', icon: '✦' },
     { value: '20+', label: 'Expert Mentors', icon: '◉' },
     { value: '500+', label: 'Happy Users', icon: '♡' },
-    { value: '4.4★', label: 'Average Rating', icon: '★' },
-    { value: '₹129', label: 'Starting Price', icon: '₹' },
+    { value: '4.4', label: 'Average Rating', icon: '★' },
+    { value: '129', label: 'Starting Price', icon: '₹' },
   ]
   return (
     <div className="stats-bar">
