@@ -161,7 +161,7 @@ export default function AuthModal() {
 
           <div className="auth-card__header">
             <div className="auth-logo">
-              <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '50px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+              <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '50px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h1 className="heading-1">{isLogin ? 'Welcome back' : 'Join LifeFundies'}</h1>
             <p className="body-sm text-muted">

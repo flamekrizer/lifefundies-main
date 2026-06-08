@@ -87,7 +87,7 @@ export function LoginPage() {
       <div className="auth-card animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+            <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Welcome back</h1>
           <p className="body-sm text-muted">Sign in to continue your journey</p>
@@ -261,7 +261,7 @@ export function RegisterPage() {
       <div className="auth-card auth-card--wide animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+            <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Join LifeFundies</h1>
           <p className="body-sm text-muted">Start your journey to life clarity today</p>
@@ -437,7 +437,7 @@ export function MentorRegisterPage() {
       <div className="auth-card auth-card--wide animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+            <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Mentor Application</h1>
           <p className="body-sm text-muted">Applications create a seeker account first. Mentor access starts after manual approval.</p>
@@ -535,7 +535,7 @@ export function ForgotPasswordPage() {
       <div className="auth-card animate-scaleIn">
         <div className="auth-card__header">
           <div className="auth-logo">
-            <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+            <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
           <h1 className="heading-1">Reset Password</h1>
           <p className="body-sm text-muted">Enter your email to receive a password reset link</p>

@@ -10,7 +10,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="footer__brand">
             <div className="footer__logo">
-              <img src="/logo.png" alt="LifeFundies Logo" style={{ height: '40px', objectFit: 'contain', display: 'block' }} />
+              <img className="brand-logo footer__brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '40px', objectFit: 'contain', display: 'block' }} />
             </div>
             <p className="footer__tagline body-sm text-muted">
               India's most trusted holistic life-guidance platform. Empowering individuals across 18 life domains with clarity, confidence, and direction.
