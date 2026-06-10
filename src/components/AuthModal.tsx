@@ -190,7 +190,7 @@ export default function AuthModal() {
             >
               <span className="role-btn__icon">👨‍💼</span>
               <div>
-                <p className="role-btn__label">Mentor</p>
+                <p className="role-btn__label">Guide</p>
                 <p className="body-sm text-muted">{isLogin ? 'I want to guide' : 'Apply for approval'}</p>
               </div>
             </button>
@@ -304,7 +304,7 @@ export default function AuthModal() {
                 <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
               ) : (
                 <>
-                  {!isLogin && role === 'mentor' ? 'Apply as Mentor' : isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
+                  {!isLogin && role === 'mentor' ? 'Apply as Guide' : isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
                 </>
               )}
             </button>

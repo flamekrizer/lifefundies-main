@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Play, CheckCircle, Target, Zap, X, MessageCircle, Send, Bot, Loader2, Sparkles } from 'lucide-react'
+import { ArrowRight, Play, CheckCircle, Target, Zap, X, MessageCircle, Send, Bot, Loader2, Sparkles, Users } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import type { IRAMessage, IRASuggestedAction } from '../../types/fundoo'
 import { MOCK_TESTIMONIALS, formatCurrency, getInitials } from '../../utils'
@@ -16,7 +16,7 @@ const DOMAIN_IMAGES: Record<string, string> = {
   communication: '/learning 2.jpg',
   productivity: '/Is content marketing different from SEO or are….jpg',
   stress: '/Financial.jpg',
-  decisions: '/You and Me💕.jpg',
+  decisions: '/Intimacy & love.jpg',
   motivation: '/Social life.jpg',
   growth: '/Personal Growth.jpeg',
   social: '/sprituality.jpg',
@@ -46,7 +46,7 @@ const DOMAIN_PROBLEM_AREAS: Record<string, Array<{ title: string; desc: string }
   emotional: [
     { title: 'Mental Health', desc: 'Stress management, emotional wellbeing, anxiety support, self-awareness, and mindset improvement.' },
     { title: 'Coping Strategies', desc: 'Healthy ways to manage stress, emotional overwhelm, and difficult life situations.' },
-    { title: 'Support Systems', desc: 'Building reliable emotional and social support through friends, family, mentors, and communities.' },
+    { title: 'Support Systems', desc: 'Building reliable emotional and social support through friends, family, guides, and communities.' },
     { title: 'Professional Help', desc: 'Accessing counselors, therapists, coaches, or experts for guidance during difficult situations.' },
   ],
   relationships: [
@@ -76,7 +76,7 @@ const DOMAIN_PROBLEM_AREAS: Record<string, Array<{ title: string; desc: string }
   stress: [
     { title: 'Coping Strategies', desc: 'Healthy ways to manage stress, anxiety, emotional overwhelm, and difficult life situations.' },
     { title: 'Resilience Building', desc: 'Developing mental strength, adaptability, confidence, and recovery after setbacks.' },
-    { title: 'Support Systems', desc: 'Building reliable emotional and social support through friends, family, mentors, and communities.' },
+    { title: 'Support Systems', desc: 'Building reliable emotional and social support through friends, family, guides, and communities.' },
     { title: 'Mental Health', desc: 'Guidance for stress management, emotional wellbeing, self-awareness, and mindset improvement.' },
   ],
   decisions: [
@@ -219,7 +219,7 @@ const DOMAIN_ALIASES: Record<string, string> = {
 const STARTER_PROMPTS = [
   'I feel confused about my career',
   'Help me manage overthinking',
-  'Which mentor should I choose?',
+  'Which guide should I choose?',
 ]
 
 function getDomainId(domain?: string) {
@@ -254,7 +254,7 @@ function FundooChatbot() {
   const [messages, setMessages] = useState<IRAMessage[]>([
     createChatMessage(
       'fundoo',
-      'Hi, I am LF Buddy. Tell me what feels stuck right now, and I will guide you to the right LifeFundies domain or mentor path.'
+      'Hi, I am LF Buddy. Tell me what feels stuck right now, and I will guide you to the right LifeFundies domain or guide path.'
     ),
   ])
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -440,7 +440,7 @@ function ChatBubble({ message }: { message: IRAMessage }) {
       <p>{message.content}</p>
       {message.sender === 'fundoo' && message.domain && domain && (
         <Link className="fundoo-chatbot__domain" to={`/mentors?domain=${domain.id}`}>
-          {domain.label} mentors
+          {domain.label} guides
         </Link>
       )}
     </article>
@@ -478,7 +478,7 @@ function HeroSection() {
           </h2>
 
           <p className="body-lg text-muted hero__desc" >
-            Everyone teaches academics and professional skills, but few teach us how to handle life's real challenges. At LifeFundies, we're here to listen—not judge. Explore <strong> 18 essential life domains </strong>, connect with mentors and guides, and become strong enough to face life's challenges with confidence.
+            Everyone teaches academics and professional skills, but few teach us how to handle life's real challenges. At LifeFundies, we're here to listen—not judge. Explore <strong> 18 essential life domains </strong>, connect with guides, and become strong enough to face life's challenges with confidence.
           </p>
 
           <div className="hero__cta-group">
@@ -578,7 +578,7 @@ function HeroSection() {
 function StatsBar() {
   const stats = [
     { value: '18', label: 'Life Domains', icon: '✦' },
-    { value: '20+', label: 'Expert Mentors', icon: '◉' },
+    { value: '20+', label: 'Expert Guides', icon: '◉' },
     { value: '500+', label: 'Happy Users', icon: '♡' },
     { value: '4.4', label: 'Average Rating', icon: '★' },
     { value: '129', label: 'Starting Price', icon: '₹' },
@@ -770,7 +770,7 @@ function CTASection() {
               </Link>
             )}
             <Link to="/mentors" className="btn btn-outline btn-xl" id="browse-mentors-cta">
-              Browse Mentors
+              Browse Guides
             </Link>
           </div>
           <p className="body-sm text-muted" style={{ marginTop: 'var(--sp-4)' }}>
@@ -799,12 +799,12 @@ function HowItWorksSection() {
     {
       step: '03',
       icon: '◇',
-      title: 'Match with a Mentor',
-      desc: 'Browse verified mentors who specialize in your domain. Read their stories, ratings, and book a time that works for you.',
+      title: 'Match with a Guide',
+      desc: 'Browse verified guides who specialize in your domain. Read their stories, ratings, and book a time that works for you.',
     },
     {
       step: '04',
-      icon: '✓',
+      icon: <Users size={20} />,
       title: 'Have a Real Conversation',
       desc: 'A structured, empathetic 1-on-1 session. Get listened to, gain clarity, and walk away with practical action steps.',
     },
@@ -850,9 +850,9 @@ function MentorsSection() {
       <div className="container">
         <div className="section-header animate-fadeInUp">
           <div className="section-eyebrow"> Expert Guidance</div>
-          <h2 className="display-2">Meet Our <span className="text-gradient">Mentors</span></h2>
+          <h2 className="display-2">Meet Our <span className="text-gradient">Guides</span></h2>
           <p className="body-lg text-muted">
-            Real people, real journeys. Our verified mentors bring lived experience and structured frameworks to every session.
+            Real people, real journeys. Our verified guides bring lived experience and structured frameworks to every session.
           </p>
         </div>
         <div className="mentors-grid">
@@ -899,13 +899,13 @@ function MentorsSection() {
         </div>
         {mentors.length === 0 && (
           <div className="mentors-page__empty">
-            <h3 className="heading-2">No verified mentors yet</h3>
-            <p className="text-muted">Approved real mentors will appear here automatically.</p>
+            <h3 className="heading-2">No verified guides yet</h3>
+            <p className="text-muted">Approved real guides will appear here automatically.</p>
           </div>
         )}
         <div style={{ textAlign: 'center', marginTop: 'var(--sp-10)' }}>
           <Link to="/mentors" className="btn btn-primary btn-lg" id="view-all-mentors">
-            View All Mentors <ArrowRight size={18} />
+            View All Guides <ArrowRight size={18} />
           </Link>
         </div>
       </div>
@@ -961,7 +961,7 @@ function PricingSection() {
       features: [
         '30-minute 1-on-1 session',
         'Choose from 18 life domains',
-        'Verified mentor',
+          'Verified guide',
         'Anonymous option available',
       ],
       cta: 'Book a Session',
@@ -974,7 +974,7 @@ function PricingSection() {
       badgeClass: 'badge-accent',
       features: [
         '45-minute guidance session',
-        'Young mentor access',
+          'Young guide access',
         'Pre-session questionnaire',
         'Personalised action plan',
       ],

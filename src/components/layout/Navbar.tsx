@@ -11,7 +11,7 @@ const NAV_LINKS: Array<{ label: string; href: string; submenu?: Array<{ label: s
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
   { label: 'Team', href: '/team' },
-  { label: 'Find Mentors', href: '/mentors' },
+  { label: 'Find Guides', href: '/mentors' },
   { label: 'Community', href: '/community' },
   { label: 'FAQs', href: '/faq' },
   { label: 'Contact Us', href: '/contact' },
@@ -157,7 +157,7 @@ export default function Navbar() {
           {user ? (
             <>
               {user.role === 'mentor' ? (
-                <Link to="/mentor-portal" className="btn btn-ghost btn-sm hide-mobile">Mentor Portal</Link>
+                <Link to="/mentor-portal" className="btn btn-ghost btn-sm hide-mobile">Guide Portal</Link>
               ) : (
                 <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
               )}
@@ -235,7 +235,7 @@ export default function Navbar() {
                     </div>
                     <div className="divider" style={{ margin: '0.5rem 0' }} />
                     {user.role === 'mentor' ? (
-                      <Link to="/mentor-portal" className="navbar__dropdown-item"><User size={15} /> Mentor Portal</Link>
+                      <Link to="/mentor-portal" className="navbar__dropdown-item"><User size={15} /> Guide Portal</Link>
                     ) : (
                       <Link to="/dashboard" className="navbar__dropdown-item"><User size={15} /> Dashboard</Link>
                     )}
@@ -319,7 +319,7 @@ export default function Navbar() {
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >
-                  {user.role === 'mentor' ? "Mentor Portal" : "Dashboard"}
+                  {user.role === 'mentor' ? "Guide Portal" : "Dashboard"}
                 </Link>
                 <button
                   className="btn btn-ghost"

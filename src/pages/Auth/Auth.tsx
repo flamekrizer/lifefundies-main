@@ -426,7 +426,7 @@ export function MentorRegisterPage() {
       navigate('/dashboard')
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Failed to submit mentor application')
+      setError(err.message || 'Failed to submit guide application')
     } finally {
       setLoading(false)
     }
@@ -439,8 +439,8 @@ export function MentorRegisterPage() {
           <div className="auth-logo">
             <img className="brand-logo auth-brand-logo" src="/logo.png" alt="LifeFundies Logo" style={{ height: '60px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
           </div>
-          <h1 className="heading-1">Mentor Application</h1>
-          <p className="body-sm text-muted">Applications create a seeker account first. Mentor access starts after manual approval.</p>
+          <h1 className="heading-1">Guide Application</h1>
+          <p className="body-sm text-muted">Applications create a seeker account first. Guide access starts after manual approval.</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>

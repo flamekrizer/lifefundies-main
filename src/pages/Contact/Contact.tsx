@@ -50,7 +50,15 @@ export default function ContactPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
       {/* Hero Banner */}
-      <section className="contact-hero">
+      <section
+        className="contact-hero"
+        style={{
+          backgroundImage: "url('/Contact us.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <div className="contact-hero__overlay" />
         <div className="container contact-hero__content">
           <h1 className="contact-hero__title">Contact Us</h1>

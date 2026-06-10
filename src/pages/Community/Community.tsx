@@ -251,12 +251,12 @@ export default function CommunityPage() {
 
   return (
     <div className="page-wrapper">
-      <div className="community-page">
+      <div className="community-page"style={{ backgroundImage: "url('/Community.jpeg')" }}>
         <div className="container">
           <div className="community__layout">
             {/* Main */}
             <div className="community__main">
-              <div className="community__header animate-fadeInUp" style={{backgroundImage:'./Community.jpeg'}}>
+              <div className="community__header animate-fadeInUp">
                 <div>
                   <h1 className="display-2">Community <span className="text-gradient">Forum</span></h1>
                   <p className="text-muted">A safe space to share, learn, and connect with peers on the same journey.</p>

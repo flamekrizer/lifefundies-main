@@ -336,7 +336,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
                   id="booking-issue"
                   className="form-input"
                   rows={3}
-                  placeholder="Share a brief overview to help your mentor prepare..."
+                  placeholder="Share a brief overview to help your guide prepare..."
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
                   style={{ resize: 'none', background: 'var(--clr-bg)' }}
@@ -379,7 +379,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
 
               <div className="booking-summary-box">
                 <div className="booking-summary-row">
-                  <span className="text-muted">Mentor</span>
+                  <span className="text-muted">Guide</span>
                   <span className="booking-summary-val">{mentorName}</span>
                 </div>
                 <div className="booking-summary-row">
@@ -456,7 +456,7 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
               </div>
 
               <p className="body-sm text-muted" style={{ maxWidth: 400, textAlign: 'center', marginTop: 'var(--sp-4)' }}>
-                You can track this request in My Sessions. Joining details appear there after the mentor accepts.
+                You can track this request in My Sessions. Joining details appear there after the guide accepts.
               </p>
             </div>
           )}

@@ -100,8 +100,8 @@ export default function FAQPage() {
   return (
     <div className="page-wrapper">
       {/* Hero Banner */}
-      <section className="faq-hero">
-        <div className="faq-hero__overlay" />
+      <section className="faq-hero"style={{ backgroundImage: "url('/FAQ.png')" }}>
+        <div className="faq-hero__overlay"  />
         <div className="container faq-hero__content">
           <h1 className="faq-hero__title">Faqs</h1>
           <p className="faq-hero__subtitle">Frequently Ask Questions</p>

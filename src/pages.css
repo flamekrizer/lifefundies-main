@@ -976,8 +976,8 @@
 .contact-hero__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(26, 88, 207, 0.85) 0%, rgba(13, 115, 119, 0.9) 100%);
   z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 15, 28, 0.08), rgba(8, 15, 28, 0.62));
 }
 
 .contact-hero__content {
@@ -1427,7 +1427,6 @@
 .faq-hero__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(26, 88, 207, 0.85) 0%, rgba(13, 115, 119, 0.9) 100%);
   z-index: 1;
 }
 
@@ -1619,7 +1618,7 @@
 
 .fundoo-chatbot__panel {
   width: min(390px, calc(100vw - 2rem));
-  height: min(640px, calc(100vh - 7rem));
+  height: min(550px, calc(100vh - 7rem));
   display: grid;
   grid-template-rows: auto 1fr auto auto auto;
   overflow: hidden;
@@ -2386,8 +2385,19 @@
   gap: var(--sp-8);
 }
 
+<<<<<<< HEAD
 .logo-trail__label h2 {
   margin-top: var(--sp-2);
+=======
+.logo-trail__label .section-eyebrow {
+  display: inline-flex;
+  margin-top: var(--sp-4);
+}
+
+.logo-trail__label h2 {
+  margin-top: var(--sp-2);
+  margin-bottom: 2.5rem;
+>>>>>>> 3206447 (Shreya changes)
   font-family: var(--font-display);
   font-size: clamp(1.05rem, 1.5vw, 1.35rem);
   line-height: 1.25;
@@ -3246,7 +3256,7 @@
 
   .fundoo-chatbot__panel {
     width: calc(100vw - 2rem);
-    height: min(600px, calc(100vh - 6rem));
+    height: min(520px, calc(100vh - 6rem));
   }
 
   .domains-story__list {
@@ -3303,7 +3313,7 @@
 
   .fundoo-chatbot__panel {
     width: calc(100vw - 1.5rem);
-    height: min(560px, calc(100vh - 5.75rem));
+    height: min(500px, calc(100vh - 5.75rem));
   }
 
   .fundoo-chatbot__launcher {
@@ -4377,8 +4387,7 @@
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, rgba(8, 15, 28, 0.86), rgba(8, 15, 28, 0.52) 48%, rgba(8, 15, 28, 0.16)),
-    linear-gradient(180deg, rgba(8, 15, 28, 0.08), rgba(8, 15, 28, 0.62));
+    linear-gradient(90deg, rgba(8, 15, 28, 0.86), rgba(8, 15, 28, 0.52) 48%, rgba(8, 15, 28, 0.16));
 }
 
 .about-hero__content,
@@ -4964,13 +4973,23 @@
   align-items: center;
   gap: var(--sp-2);
   margin-bottom: var(--sp-5);
-  color: var(--clr-text-muted);
+  padding: 0.45rem 0.75rem;
+  width: fit-content;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1A58CF 0%, rgba(26, 88, 207, 0.82) 45%, rgba(26, 88, 207, 0.28) 100%);
+  color: white;
   font-size: 0.8125rem;
   font-weight: 700;
+  box-shadow: 0 8px 24px rgba(26, 88, 207, 0.16);
 }
 
 .policy-breadcrumb a {
-  color: var(--clr-primary-dark);
+  color: white;
+  text-decoration: none;
+}
+
+.policy-breadcrumb a:hover {
+  opacity: 0.9;
 }
 
 .policy-section {

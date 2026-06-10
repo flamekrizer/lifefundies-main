@@ -121,11 +121,11 @@ export default function MentorsPage() {
           {/* Header */}
           <div className="mentors-page__header animate-fadeInUp">
             <div>
-              <h1 className="display-2">Find Your <span className="text-gradient">Mentor</span></h1>
+              <h1 className="display-2">Find Your <span className="text-gradient">Guide</span></h1>
               <p className="body-lg text-muted">Connect with verified experts across 18 life domains</p>
             </div>
             <div className="mentors-page__stats">
-              <span className="badge badge-primary">{mentors.length} Mentors</span>
+              <span className="badge badge-primary">{mentors.length} Guides</span>
               <span className="badge badge-secondary">All Verified</span>
             </div>
           </div>
@@ -138,7 +138,7 @@ export default function MentorsPage() {
                 id="mentor-search"
                 type="search"
                 className="form-input mentors-search__input input-with-icon"
-                placeholder="Search mentors, expertise, domains..."
+                placeholder="Search guides, expertise, domains..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -241,7 +241,7 @@ export default function MentorsPage() {
 
           {/* Results count */}
           <p className="body-sm text-muted animate-fadeIn" style={{ marginBottom: 'var(--sp-4)' }}>
-            Showing <strong>{filtered.length}</strong> mentor{filtered.length !== 1 ? 's' : ''}
+            Showing <strong>{filtered.length}</strong> guide{filtered.length !== 1 ? 's' : ''}
             {selectedDomain && ` in ${LIFE_DOMAINS.find(d => d.id === selectedDomain)?.label}`}
           </p>
 
@@ -348,7 +348,7 @@ export default function MentorsPage() {
           ) : (
             <div className="mentors-page__empty">
               <span style={{ fontSize: '3rem' }}>🔍</span>
-              <h3 className="heading-2">No mentors found</h3>
+              <h3 className="heading-2">No guides found</h3>
               <p className="text-muted">Try adjusting your filters or search terms</p>
               <button className="btn btn-primary" onClick={() => { setSearch(''); setSelectedDomain(''); setPriceRange('all') }}>
                 Clear all filters

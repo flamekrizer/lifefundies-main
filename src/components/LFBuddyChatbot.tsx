@@ -31,7 +31,7 @@ const DOMAIN_ALIASES: Record<string, string> = {
 const STARTER_PROMPTS = [
   'I feel confused about my career',
   'Help me manage overthinking',
-  'Which mentor should I choose?',
+  'Which guide should I choose?',
 ]
 
 function getDomainId(domain?: string) {
@@ -65,7 +65,7 @@ function ChatBubble({ message }: { message: IRAMessage }) {
       <p>{message.content}</p>
       {message.sender === 'fundoo' && message.domain && domain && (
         <Link className="fundoo-chatbot__domain" to={`/mentors?domain=${domain.id}`}>
-          {domain.label} mentors
+          {domain.label} guides
         </Link>
       )}
     </article>
@@ -82,7 +82,7 @@ export default function LFBuddyChatbot() {
   const [messages, setMessages] = useState<IRAMessage[]>([
     createChatMessage(
       'fundoo',
-      'Hi, I am LF Buddy. Tell me what feels stuck right now, and I will guide you to the right LifeFundies domain or mentor path.'
+      'Hi, I am LF Buddy. Tell me what feels stuck right now, and I will guide you to the right LifeFundies domain or guide path.'
     ),
   ])
   const messagesEndRef = useRef<HTMLDivElement | null>(null)

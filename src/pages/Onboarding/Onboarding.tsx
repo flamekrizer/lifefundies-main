@@ -214,7 +214,7 @@ function WelcomeStep({
   const options = [
     { id: 'anonymous', icon: '🎭', text: 'Completely anonymous option' },
     { id: 'private', icon: '🔒', text: 'Private & secure conversations' },
-    { id: 'matching', icon: '🎯', text: 'Personalised mentor matching' },
+    { id: 'matching', icon: '🎯', text: 'Personalised guide matching' },
   ]
 
   return (
@@ -222,7 +222,7 @@ function WelcomeStep({
       <div className="ob-step__icon">🎉</div>
       <h2 className="heading-1">Welcome!</h2>
       <p className="body-lg text-muted">
-        We're excited to have you here. Let's take 2 minutes to personalise your LifeFundies experience so we can connect you with the right mentors and support.
+        We're excited to have you here. Let's take 2 minutes to personalise your LifeFundies experience so we can connect you with the right guides and support.
       </p>
       <div className="ob-features">
         {options.map((f) => (
@@ -250,7 +250,7 @@ function AboutStep({ data, update }: { data: { city: string; profession: string;
     <div className="ob-step animate-fadeInUp">
       <div className="ob-step__icon">👤</div>
       <h2 className="heading-1">Tell us about yourself</h2>
-      <p className="body-sm text-muted">This helps us match you with the most relevant mentors.</p>
+      <p className="body-sm text-muted">This helps us match you with the most relevant guides.</p>
       <div className="ob-form">
         <div className="form-group">
           <label className="form-label">Your City</label>
@@ -323,7 +323,7 @@ function ChallengeStep({
       <div className="ob-step__icon">💬</div>
       <h2 className="heading-1">What's on your mind?</h2>
       <p className="body-sm text-muted">
-        Briefly describe what you're going through. This is completely optional and helps mentors prepare for your session.
+        Briefly describe what you're going through. This is completely optional and helps guides prepare for your session.
       </p>
       <div className="form-group">
         <textarea
@@ -350,12 +350,12 @@ function ChallengeStep({
             {isAnonymous ? <EyeOff size={14} style={{ color: 'var(--clr-primary-light)' }} /> : <Eye size={14} />}
             <span className="body-sm font-medium">Share anonymously</span>
           </div>
-          <p className="body-sm text-muted">Your name won't be shown to the mentor until you're ready</p>
+          <p className="body-sm text-muted">Your name won't be shown to the guide until you're ready</p>
         </div>
       </div>
       <div className="ob-tip">
         <Shield size={14} style={{ color: 'var(--clr-primary-light)' }} />
-        <span className="body-sm text-muted">This info is only shared with the mentor you book a session with</span>
+        <span className="body-sm text-muted">This info is only shared with the guide you book a session with</span>
       </div>
     </div>
   )
@@ -363,7 +363,7 @@ function ChallengeStep({
 
 function PrefsStep({ data, update }: { data: { sessionPreference: string; isAnonymous: boolean }; update: (f: string, v: unknown) => void }) {
   const sessionTypes = [
-    { id: 'one-on-one', icon: '👤', label: '1-on-1 Session', desc: 'Private session with a dedicated mentor' },
+    { id: 'one-on-one', icon: '👤', label: '1-on-1 Session', desc: 'Private session with a dedicated guide' },
     { id: 'peer', icon: '👥', label: 'Peer Support', desc: 'Connect with someone who has been through similar experiences' },
     { id: 'group', icon: '🎯', label: 'Group Session', desc: 'Learn and grow with a small group facing similar challenges' },
   ]
@@ -397,7 +397,7 @@ function PrefsStep({ data, update }: { data: { sessionPreference: string; isAnon
       <div className="ob-final-toggle">
         <div>
           <p className="font-medium">Keep my profile anonymous by default</p>
-          <p className="body-sm text-muted">Your name and photo will be hidden from mentors until you choose to reveal</p>
+          <p className="body-sm text-muted">Your name and photo will be hidden from guides until you choose to reveal</p>
         </div>
         <button
           type="button"

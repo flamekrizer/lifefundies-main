@@ -353,7 +353,7 @@ export default function DashboardPage() {
                   <div className="flex-col gap-3">
                     {upcomingSessions.map(session => {
                       const isJoinable = session.status === 'confirmed' && !!session.sessionId;
-                      const statusLabel = session.status === 'pending' ? 'Awaiting mentor' : session.status;
+                      const statusLabel = session.status === 'pending' ? 'Awaiting guide' : session.status;
                       return (
                         <div key={session.id} className="session-card" id={`session-${session.id}`}>
                           <div className="avatar avatar-md" style={{ overflow: 'hidden', border: '1px solid var(--clr-border)' }}>
@@ -392,7 +392,7 @@ export default function DashboardPage() {
                     <Calendar size={32} />
                     <p style={{ fontWeight: 600, color: 'var(--clr-text)' }}>No upcoming sessions yet</p>
                     <p className="body-sm text-muted" style={{ marginBottom: 'var(--sp-2)' }}>
-                      Book your first mentorship session to get started.
+                        Book your first guidance session to get started.
                     </p>
                     <Link to="/mentors" className="btn btn-primary btn-sm">Book a Session</Link>
                   </div>

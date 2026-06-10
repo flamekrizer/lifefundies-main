@@ -97,7 +97,7 @@ export default function SessionsPage() {
   }
 
   const getStatusLabel = (status: string) => {
-    if (status === 'pending') return 'Awaiting mentor'
+    if (status === 'pending') return 'Awaiting guide'
     return status
   }
 
@@ -233,7 +233,7 @@ export default function SessionsPage() {
               <Calendar size={48} style={{ color: 'var(--clr-text-subtle)' }} />
               <h3 className="heading-2">No sessions yet</h3>
               <p className="text-muted">Start your journey by booking your first session</p>
-              <Link to="/mentors" className="btn btn-primary">Find a Mentor</Link>
+              <Link to="/mentors" className="btn btn-primary">Find a Guide</Link>
             </div>
           )}
         </div>

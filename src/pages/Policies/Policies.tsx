@@ -43,8 +43,8 @@ export function ServicesPage() {
       subtitle="LifeFundies offers online life-guidance sessions across 18 life domains with transparent INR pricing."
     >
       <PolicyBlock title="Services Offered">
-        <p>LifeFundies provides non-clinical, peer-based and mentor-led guidance sessions for career clarity, education, mental well-being, family responsibilities, relationships, personal growth, digital life, finance basics, purpose, and related life domains.</p>
-        <p>Sessions are delivered online through chat, audio, or video depending on mentor availability and booking flow. LifeFundies is not a medical, therapy, psychiatric, or emergency-support service.</p>
+        <p>LifeFundies provides non-clinical, peer-based and guide-led guidance sessions for career clarity, education, mental well-being, family responsibilities, relationships, personal growth, digital life, finance basics, purpose, and related life domains.</p>
+        <p>Sessions are delivered online through chat, audio, or video depending on guide availability and booking flow. LifeFundies is not a medical, therapy, psychiatric, or emergency-support service.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Pricing in INR">
@@ -67,7 +67,7 @@ export function ServicesPage() {
       </PolicyBlock>
 
       <PolicyBlock title="How Booking Works">
-        <p>Users select a mentor, topic, session category, duration, and available time slot. Payment is collected through Cashfree. A booking is confirmed only after successful payment verification.</p>
+        <p>Users select a guide, topic, session category, duration, and available time slot. Payment is collected through Cashfree. A booking is confirmed only after successful payment verification.</p>
         <p>For support before or after payment, contact <a href="mailto:support@lifefundies.in">support@lifefundies.in</a> or call <a href="tel:+917055984498">+91-7055984498</a>.</p>
       </PolicyBlock>
     </PolicyShell>
@@ -86,31 +86,31 @@ export function TermsPage() {
       </PolicyBlock>
 
       <PolicyBlock title="Nature of Service - Judgment-Free Guidance">
-        <p>LifeFundies is a life-readiness and clarity platform for people seeking emotional clarity, career guidance, non-clinical life support conversations, personal development chats, and peer mentoring with privacy and empathy.</p>
+        <p>LifeFundies is a life-readiness and clarity platform for people seeking emotional clarity, career guidance, non-clinical life support conversations, personal development chats, and peer guidance with privacy and empathy.</p>
         <p>We provide structured, judgment-free guidance conversations. LifeFundies is not a therapy, medical counseling, psychiatric, diagnosis, or emergency crisis intervention service.</p>
         <p>If you are in immediate danger or need urgent mental health support, please contact local emergency services, a trusted person, or a qualified professional immediately.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Peer-Based Guide Model">
-        <p>LifeFundies operates through Peer Buddies, Young Mentors, and Senior Advisors. Guides are trained under LifeFundies frameworks for active listening, session privacy, emotional neutrality, and structured responses.</p>
+        <p>LifeFundies operates through Peer Buddies, Young Guides, and Senior Advisors. Guides are trained under LifeFundies frameworks for active listening, session privacy, emotional neutrality, and structured responses.</p>
         <p>No guide offers medical, psychiatric, legal, financial, or therapeutic advice. Guidance is based on lived experience, structured conversation, and non-clinical support.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Session Access, Payments, and Confirmation">
-        <p>Sessions are booked directly through the LifeFundies website by selecting a mentor, life domain, session category, duration, available time slot, and issue summary. The total fee is shown in INR before payment.</p>
+        <p>Sessions are booked directly through the LifeFundies website by selecting a guide, life domain, session category, duration, available time slot, and issue summary. The total fee is shown in INR before payment.</p>
         <p>Payments are processed through Cashfree. A booking is treated as confirmed only after successful payment verification. LF-ID is used as your semi-anonymous identity for session handling and progress tracking.</p>
-        <p>We may cancel or reschedule bookings if a mentor becomes unavailable, if payment verification fails, or if platform abuse is detected.</p>
+        <p>We may cancel or reschedule bookings if a guide becomes unavailable, if payment verification fails, or if platform abuse is detected.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Session Flow and Confidentiality">
-        <p>Sessions may be conducted through website video room, Google Meet, Zoom, WhatsApp, chat, or another suitable online mode depending on the booking flow and mentor availability.</p>
+        <p>Sessions may be conducted through website video room, Google Meet, Zoom, WhatsApp, chat, or another suitable online mode depending on the booking flow and guide availability.</p>
         <p>Your real name, phone number, email, and full form details are not shared with the guide unless required for support or unless you choose to share them. Guides generally receive only your LF-ID, chosen topic, session date/time, and session link.</p>
         <p>Users and guides must not record, screenshot, publish, or share session content without written permission.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Refunds and Cancellations">
         <p>No refunds are issued after a completed session. Refunds may be considered for duplicate payments, accidental payments, technical payment errors, or cases where LifeFundies cannot provide or reschedule a paid session.</p>
-        <p>Refund or support requests must be raised within 48 hours at <a href="mailto:support@lifefundies.in">support@lifefundies.in</a>. Rescheduling is allowed up to 12 hours before the session, subject to mentor availability.</p>
+        <p>Refund or support requests must be raised within 48 hours at <a href="mailto:support@lifefundies.in">support@lifefundies.in</a>. Rescheduling is allowed up to 12 hours before the session, subject to guide availability.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Misuse and Bans">
@@ -139,7 +139,7 @@ export function RefundPage() {
       subtitle="Our refund and cancellation rules for LifeFundies online guidance sessions."
     >
       <PolicyBlock title="Cancellations and Rescheduling">
-        <p>You may request rescheduling up to 12 hours before the scheduled session time, subject to mentor availability. Missed sessions may be rescheduled once at LifeFundies’ discretion.</p>
+        <p>You may request rescheduling up to 12 hours before the scheduled session time, subject to guide availability. Missed sessions may be rescheduled once at LifeFundies’ discretion.</p>
         <p>To request help, email <a href="mailto:support@lifefundies.in">support@lifefundies.in</a> with your booking ID, registered email, and session time.</p>
       </PolicyBlock>
 
@@ -170,7 +170,7 @@ export function PrivacyPage() {
       </PolicyBlock>
 
       <PolicyBlock title="What Information We Collect">
-        <p>When you create an account, complete onboarding, book a session, contact us, or use the website, we may collect your alias or preferred name, age group, email, phone number, preferred contact method, selected life domains, primary concern area, session preferences, chosen mentor category, time slot, payment status, issue summary, optional personal notes, and basic usage data.</p>
+        <p>When you create an account, complete onboarding, book a session, contact us, or use the website, we may collect your alias or preferred name, age group, email, phone number, preferred contact method, selected life domains, primary concern area, session preferences, chosen guide category, time slot, payment status, issue summary, optional personal notes, and basic usage data.</p>
         <p>You may use an alias or preferred name. We do not require you to reveal more personal details than needed for account, booking, payment, and session support.</p>
       </PolicyBlock>
 

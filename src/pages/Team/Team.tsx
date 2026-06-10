@@ -20,16 +20,19 @@ const LEADERSHIP: TeamMember[] = [
     name: 'Saquib Shamshi',
     role: 'CTO',
     group: 'Technology',
+    image: '/team/saquib-shamshi.jpg',
   },
   {
     name: 'Shreya',
     role: 'COO',
     group: 'Operations',
+    image: '/team/shreya.jpg',
   },
   {
     name: 'Mrs. Pratibha Sharma',
     role: 'Co-Founder & Advisor',
     group: 'Advisory',
+    image: '/team/pratibha-sharma.jpg',
   },
 ]
 
@@ -38,6 +41,7 @@ const PRODUCT_MANAGERS: TeamMember[] = [
     name: 'Avani Sharma',
     role: 'Product & Design Manager',
     group: 'Product',
+    image: '/team/avani-sharma.jpg',
   },
 ]
 
@@ -46,62 +50,74 @@ const CORE_TEAM: TeamMember[] = [
     name: 'Pushkar Singh',
     role: 'Co Head of Tech',
     group: 'Technology',
-
+    image: '/team/pushkar-singh.jpg',
   },
+
   {
     name: 'Deepak',
     role: 'Web Developer',
     group: 'Engineering',
+    image: '/team/deepak.jpg',
   },
   {
     name: 'Aarjav',
     role: 'Finance & Operations',
     group: 'Operations',
+    image: '/team/aarjav.jpg',
   },
   {
     name: 'Aishwarya Srivastava',
     role: 'Content Head',
     group: 'Content',
+    image: '/team/aishwarya-srivastava.jpg',
   },
   {
     name: 'Yogita',
     role: 'Communication & Content',
     group: 'Communication',
+    image: '/team/yogita.jpg',
   },
   {
     name: 'Riddhi Thakur',
     role: 'Content Creation & Customer Support',
     group: 'Support',
+    image: '/team/riddhi-thakur.jpg',
   },
   {
     name: 'Astitva',
     role: 'Video Editor & Marketing Head',
     group: 'Marketing',
+    image: '/team/astitva.jpg',
   },
   {
     name: 'Sameer Omair',
     role: 'Social Media Manager',
     group: 'Marketing',
+    image: '/team/sameer-omair.jpg',
   },
   {
     name: 'Devesh Kumar',
-    role: 'Mentor & Advisor',
+    role: 'Guide & Advisor',
     group: 'Guidance',
+    image: '/team/devesh-kumar.jpg',
   },
   {
     name: 'Gaurav Mudgal',
     role: 'Guide',
     group: 'Guidance',
+    image: '/team/gaurav-mudgal.jpg',
   },
   {
     name: 'Harshit Kumar',
     role: 'Intern',
     group: 'Internship',
+    image: '/team/harshit.jpg',
   },
   {
     name: 'Krishna Sharma',
     role: 'Intern',
     group: 'Internship',
+    image: '/team/krishna-sharma.jpg',
   },
 ]
 
@@ -149,7 +165,7 @@ function TeamCard({ member, featured = false }: { member: TeamMember; featured?:
 export default function TeamPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
-      <section className="team-hero">
+      <section className="team-hero"style={{ backgroundImage: "url('./Our team.jpeg')" }}>
         <div className="team-hero__overlay" />
         <div className="container team-hero__content">
           <nav className="page-breadcrumb" aria-label="Breadcrumb">

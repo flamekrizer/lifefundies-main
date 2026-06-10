@@ -32,10 +32,10 @@ export default function Footer() {
           <div className="footer__col">
             <h4 className="footer__heading">Platform</h4>
             <nav aria-label="Platform links">
-              <Link to="/mentors" className="footer__link">Find Mentors</Link>
+              <Link to="/mentors" className="footer__link">Find Guides</Link>
               <Link to="/services" className="footer__link">Products & Services</Link>
               <Link to="/community" className="footer__link">Community Forum</Link>
-              <Link to="/mentor-register" className="footer__link">Become a Mentor</Link>
+              <Link to="/mentor-register" className="footer__link">Become a Guide</Link>
               <Link to="/#pricing" className="footer__link">Pricing</Link>
               <Link to="/#how-it-works" className="footer__link">How It Works</Link>
               <Link to="/faq" className="footer__link">FAQs</Link>
