@@ -2385,10 +2385,6 @@
   gap: var(--sp-8);
 }
 
-<<<<<<< HEAD
-.logo-trail__label h2 {
-  margin-top: var(--sp-2);
-=======
 .logo-trail__label .section-eyebrow {
   display: inline-flex;
   margin-top: var(--sp-4);
@@ -2397,7 +2393,6 @@
 .logo-trail__label h2 {
   margin-top: var(--sp-2);
   margin-bottom: 2.5rem;
->>>>>>> 3206447 (Shreya changes)
   font-family: var(--font-display);
   font-size: clamp(1.05rem, 1.5vw, 1.35rem);
   line-height: 1.25;
