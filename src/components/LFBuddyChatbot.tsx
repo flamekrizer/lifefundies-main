@@ -7,25 +7,36 @@ import { useAuthStore } from '../stores'
 import { callIRA, getIRAStatus } from '../lib/iraClient'
 
 const DOMAIN_ALIASES: Record<string, string> = {
+  // Corrected mappings
   career: 'career',
   'career & profession': 'career',
   'mental well-being': 'emotional',
   relationships: 'relationships',
-  'health & fitness': 'confidence',
-  'education & learning': 'communication',
-  'business & entrepreneurship': 'productivity',
-  'finance & wealth': 'stress',
-  'love & intimacy': 'decisions',
-  'social life & networking': 'motivation',
+  'self-identity': 'confidence',
+  'social life & networking': 'communication',
+  'personal growth / productivity': 'productivity',
+  'mental well-being / stress': 'stress',
+  'love & intimacy / decisions': 'decisions',
+  'social life & networking / motivation': 'motivation',
   'personal growth': 'growth',
+  'family responsibilities': 'social',
+  'education & learning': 'academic',
+  'career & profession / professional': 'professional',
+  lifestyle: 'lifestyle',
+  'life transitions': 'transitions',
+  'values / spirituality': 'values',
+  'finance & wealth': 'financial',
+  'dreams & aspirations': 'clarity',
+
+  // Old/legacy mappings for compatibility
+  'health & fitness': 'confidence',
+  'business & entrepreneurship': 'productivity',
+  'love & intimacy': 'decisions',
   'spirituality & purpose': 'social',
   'technology & digital life': 'academic',
-  'family responsibilities': 'professional',
   'creativity & innovation': 'lifestyle',
   'entertainment & fun': 'transitions',
   'society & contribution': 'values',
-  'self-identity': 'financial',
-  'dreams & aspirations': 'clarity',
 }
 
 const STARTER_PROMPTS = [

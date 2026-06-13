@@ -196,24 +196,35 @@ function LogoTrail() {
 }
 
 const DOMAIN_ALIASES: Record<string, string> = {
-  'Career & Profession': 'career',
-  'Mental Well-being': 'emotional',
-  'Relationships': 'relationships',
-  'Health & Fitness': 'confidence',
-  'Education & Learning': 'communication',
-  'Business & Entrepreneurship': 'productivity',
-  'Finance & Wealth': 'stress',
-  'Love & Intimacy': 'decisions',
-  'Social Life & Networking': 'motivation',
-  'Personal Growth': 'growth',
-  'Spirituality & Purpose': 'social',
-  'Technology & Digital Life': 'academic',
-  'Family Responsibilities': 'professional',
-  'Creativity & Innovation': 'lifestyle',
-  'Entertainment & Fun': 'transitions',
-  'Society & Contribution': 'values',
-  'Self-Identity': 'financial',
-  'Dreams & Aspirations': 'clarity',
+  // Corrected mappings
+  'career & profession': 'career',
+  'mental well-being': 'emotional',
+  'relationships': 'relationships',
+  'self-identity': 'confidence',
+  'social life & networking': 'communication',
+  'personal growth / productivity': 'productivity',
+  'mental well-being / stress': 'stress',
+  'love & intimacy / decisions': 'decisions',
+  'social life & networking / motivation': 'motivation',
+  'personal growth': 'growth',
+  'family responsibilities': 'social',
+  'education & learning': 'academic',
+  'career & profession / professional': 'professional',
+  'lifestyle': 'lifestyle',
+  'life transitions': 'transitions',
+  'values / spirituality': 'values',
+  'finance & wealth': 'financial',
+  'dreams & aspirations': 'clarity',
+
+  // Old/legacy mappings for compatibility
+  'health & fitness': 'confidence',
+  'business & entrepreneurship': 'productivity',
+  'love & intimacy': 'decisions',
+  'spirituality & purpose': 'social',
+  'technology & digital life': 'academic',
+  'creativity & innovation': 'lifestyle',
+  'entertainment & fun': 'transitions',
+  'society & contribution': 'values',
 }
 
 const STARTER_PROMPTS = [
