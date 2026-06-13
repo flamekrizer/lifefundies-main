@@ -7,8 +7,10 @@ import { useAuthStore } from '../stores'
 import { callIRA, getIRAStatus } from '../lib/iraClient'
 
 const DOMAIN_ALIASES: Record<string, string> = {
-  career: 'career',
+  // Primary mappings: production label string → domain ID
+  // (label is what users see; id is what LIFE_DOMAINS uses internally)
   'career & profession': 'career',
+  career: 'career',
   'mental well-being': 'emotional',
   relationships: 'relationships',
   'health & fitness': 'confidence',

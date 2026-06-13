@@ -425,7 +425,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex gap-3" style={{ marginTop: 'var(--sp-1)' }}>
                           <span className="body-sm text-muted"><Star size={12} style={{ display: 'inline' }} /> {mentor.rating}</span>
-                          <span className="body-sm text-muted"><Users size={12} style={{ display: 'inline' }} /> {mentor.totalSessions} sessions</span>
+                          <span className="body-sm text-muted"><Users size={12} style={{ display: 'inline' }} /> {(!mentor.totalSessions || mentor.totalSessions <= 0) ? 'New Mentor' : `${mentor.totalSessions} sessions`}</span>
                         </div>
                       </div>
                       <div className="dashboard__mentor-cta">

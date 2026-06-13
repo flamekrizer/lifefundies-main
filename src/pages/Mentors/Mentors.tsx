@@ -273,11 +273,15 @@ export default function MentorsPage() {
                           <h3 className="mentor-card-full__name">{mentor.displayName}</h3>
                           <p className="body-sm text-muted">{mentor.education} · {mentor.yearsOfExperience}+ years</p>
                         </div>
-                        <div className="mentor-card-full__rating">
-                          <Star size={16} style={{ color: 'var(--clr-secondary)', fill: 'var(--clr-secondary)' }} />
-                          <span className="mentor-card-full__rating-val">{mentor.rating}</span>
-                          <span className="body-sm text-muted">({mentor.reviewCount} reviews)</span>
-                        </div>
+                        {mentor.reviewCount > 0 ? (
+                          <div className="mentor-card-full__rating">
+                            <Star size={16} style={{ color: 'var(--clr-secondary)', fill: 'var(--clr-secondary)' }} />
+                            <span className="mentor-card-full__rating-val">{mentor.rating}</span>
+                            <span className="body-sm text-muted">({mentor.reviewCount} reviews)</span>
+                          </div>
+                        ) : (
+                          <span className="body-sm text-muted">No Reviews Yet</span>
+                        )}
                       </div>
 
                       <p className="body-sm text-muted">{mentor.bio}</p>
@@ -301,7 +305,7 @@ export default function MentorsPage() {
 
                       <div className="mentor-card-full__footer">
                         <div className="flex gap-4">
-                          <span className="body-sm text-muted"><Users size={13} style={{ display: 'inline' }} /> {mentor.totalSessions} sessions</span>
+                          <span className="body-sm text-muted"><Users size={13} style={{ display: 'inline' }} /> {(!mentor.totalSessions || mentor.totalSessions <= 0) ? 'New Mentor' : `${mentor.totalSessions} sessions`}</span>
                           <span className="body-sm text-muted">🌐 {mentor.languages.join(', ')}</span>
                         </div>
                         <div className="mentor-card-full__cta">

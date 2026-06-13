@@ -869,10 +869,16 @@ function MentorsSection() {
                 <div>
                   <p className="mentor-card__name">{mentor.displayName}</p>
                   <p className="body-sm text-muted">{mentor.yearsOfExperience}+ years experience</p>
-                  <div className="stars" style={{ marginTop: '2px' }}>
-                    {Array.from({ length: 5 }).map((_, j) => <span key={j} className="star">★</span>)}
-                    <span className="body-sm text-muted" style={{ marginLeft: '4px' }}>{mentor.rating} ({mentor.reviewCount})</span>
-                  </div>
+                  {mentor.reviewCount > 0 ? (
+                    <div className="stars" style={{ marginTop: '2px' }}>
+                      {Array.from({ length: 5 }).map((_, j) => <span key={j} className="star">★</span>)}
+                      <span className="body-sm text-muted" style={{ marginLeft: '4px' }}>{mentor.rating} ({mentor.reviewCount})</span>
+                    </div>
+                  ) : (
+                    <div className="stars" style={{ marginTop: '2px' }}>
+                      <span className="body-sm text-muted">No Reviews Yet</span>
+                    </div>
+                  )}
                 </div>
                 {mentor.isVerified && <span className="badge badge-primary mentor-card__verified">✓ Verified</span>}
               </div>
@@ -887,7 +893,11 @@ function MentorsSection() {
               <p className="body-sm text-muted mentor-card__bio">{mentor.bio}</p>
 
               <div className="mentor-card__stats">
-                <span className="body-sm text-muted">{mentor.totalSessions}+ sessions</span>
+                <span className="body-sm text-muted">
+                  {!mentor.totalSessions || mentor.totalSessions <= 0
+                    ? 'New Guide'
+                    : `${mentor.totalSessions}+ sessions`}
+                </span>
                 <span className="mentor-card__price">{formatCurrency(mentor.sessionPrice)}/session</span>
               </div>
 
@@ -968,7 +978,7 @@ function PricingSection() {
       highlight: false,
     },
     {
-      name: 'Young Mentor',
+      name: 'Young Guide',
       price: 199,
       badge: 'Most Popular',
       badgeClass: 'badge-accent',
