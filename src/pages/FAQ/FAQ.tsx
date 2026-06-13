@@ -103,7 +103,7 @@ export default function FAQPage() {
       <section className="faq-hero"style={{ backgroundImage: "url('/FAQ.png')" }}>
         <div className="faq-hero__overlay"  />
         <div className="container faq-hero__content">
-          <h1 className="faq-hero__title">Faqs</h1>
+          <h1 className="faq-hero__title">FAQs</h1>
           <p className="faq-hero__subtitle">Frequently Ask Questions</p>
         </div>
       </section>
