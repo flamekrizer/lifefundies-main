@@ -10,7 +10,7 @@ import { db } from '../../lib/firebase'
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'user' | 'mentor'>('user')
+  const [role, setRole] = useState<'user' | 'mentor' | 'admin'>('user')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -21,7 +21,7 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithGoogle(role)
+      const loggedInUser = await signInWithGoogle(role === 'admin' ? 'user' : role)
       setUser(loggedInUser)
       if (loggedInUser.role === 'admin') {
         navigate('/admin')
@@ -68,7 +68,7 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithEmail(email, password, role)
+      const loggedInUser = await signInWithEmail(email, password, role === 'admin' ? 'user' : role)
       
       setUser(loggedInUser)
       if (loggedInUser.role === 'admin') {
@@ -123,6 +123,18 @@ export function LoginPage() {
             <div>
               <p className="role-btn__label">Mentor</p>
               <p className="body-sm text-muted">I want to guide</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className={`role-btn ${role === 'admin' ? 'role-btn--active' : ''}`}
+            id="login-role-admin"
+            onClick={() => setRole('admin')}
+          >
+            <span className="role-btn__icon">🔐</span>
+            <div>
+              <p className="role-btn__label">Admin</p>
+              <p className="body-sm text-muted">Manage approvals</p>
             </div>
           </button>
         </div>
@@ -309,6 +321,18 @@ export function RegisterPage() {
             <div>
               <p className="role-btn__label">Mentor</p>
               <p className="body-sm text-muted">Apply for mentor approval</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="role-btn"
+            id="role-admin"
+            onClick={() => navigate('/login')}
+          >
+            <span className="role-btn__icon">🔐</span>
+            <div>
+              <p className="role-btn__label">Admin</p>
+              <p className="body-sm text-muted">Sign in to manage</p>
             </div>
           </button>
         </div>
