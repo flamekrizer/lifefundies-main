@@ -15,6 +15,7 @@ import type { User as UserType, Mentor } from '../types'
 import { normalizeMentorCategories, getLowestCategoryPrice } from './pricing'
 import type { DomainId } from '../types'
 import { generateLFID } from '../utils/generateLFID'
+import { roleForEmail } from './admin'
 
 const mapUserDoc = (uid: string, data: any): UserType => ({
   uid,
@@ -22,7 +23,7 @@ const mapUserDoc = (uid: string, data: any): UserType => ({
   displayName: data.displayName || data.fullName || 'User',
   email: data.email || '',
   phone: data.phone || '',
-  role: data.role || 'user',
+  role: roleForEmail(data.email, data.role || 'user'),
   domains: data.domains || [],
   isAnonymous: data.isAnonymous || false,
   onboardingComplete: data.onboardingComplete || false,

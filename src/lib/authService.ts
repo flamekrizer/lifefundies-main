@@ -13,11 +13,12 @@ import { generateLFID } from '../utils/generateLFID'
 import { auth } from './firebase'
 import type { User as UserType } from '../types'
 import { createUserDoc, getUserDoc, subscribeToUserDoc } from './userRepository'
+import { roleForEmail } from './admin'
 
 // ── Email/Password Auth ──────────────────────────────────────
 export const signUpWithEmail = async (email: string, password: string, displayName: string, phone: string = '', role: 'user' | 'mentor' = 'user') => {
   try {
-    const safeRole = role === 'mentor' ? 'user' : role
+    const safeRole = roleForEmail(email, role === 'mentor' ? 'user' : role)
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
 
@@ -59,7 +60,7 @@ export const signInWithEmail = async (email: string, password: string, selectedR
         displayName: firebaseUser.displayName || 'User',
         email: firebaseUser.email || email,
         phone: firebaseUser.phoneNumber || '',
-        role: 'user',
+        role: roleForEmail(firebaseUser.email || email),
         domains: [],
         isAnonymous: false,
         onboardingComplete: false,
@@ -79,7 +80,7 @@ export const signInWithEmail = async (email: string, password: string, selectedR
       displayName: firebaseUser.displayName || userData.displayName || 'User',
       email: firebaseUser.email || email,
       phone: userData.phone || firebaseUser.phoneNumber || '',
-      role: userData.role || 'user',
+      role: roleForEmail(firebaseUser.email || email, userData.role || 'user'),
       domains: userData.domains || [],
       isAnonymous: userData.isAnonymous || false,
       onboardingComplete: userData.onboardingComplete || false,
@@ -109,7 +110,7 @@ export const signInWithGoogle = async (role: 'user' | 'mentor' = 'user') => {
         displayName: firebaseUser.displayName || 'Google User',
         email: firebaseUser.email || '',
         phone: firebaseUser.phoneNumber || '',
-        role: 'user',
+        role: roleForEmail(firebaseUser.email),
         domains: [],
         isAnonymous: false,
         onboardingComplete: false,
@@ -147,7 +148,7 @@ export const signInAnonymously = async () => {
       lfId: generateLFID(firebaseUser.uid),
       displayName: 'Anonymous User',
       email: '',
-      role: 'user',
+      role: roleForEmail(firebaseUser.email),
       domains: [],
       isAnonymous: true,
       onboardingComplete: false,
@@ -205,7 +206,7 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
             displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
             email: firebaseUser.email || '',
             phone: firebaseUser.phoneNumber || '',
-            role: 'user',
+            role: roleForEmail(firebaseUser.email),
             domains: [],
             isAnonymous: firebaseUser.isAnonymous,
             onboardingComplete: false,
@@ -231,7 +232,7 @@ export const onAuthStateChange = (callback: (user: UserType | null) => void) => 
           displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Anonymous User' : 'User'),
           email: firebaseUser.email || '',
           phone: firebaseUser.phoneNumber || '',
-          role: 'user',
+          role: roleForEmail(firebaseUser.email),
           domains: [],
           isAnonymous: firebaseUser.isAnonymous,
           onboardingComplete: false,

@@ -32,6 +32,8 @@ export default function Navbar() {
   const unreadCount = notificationsList.filter(n => !n.isRead).length
   const location = useLocation()
   const navigate = useNavigate()
+  const portalPath = user?.role === 'admin' ? '/admin' : user?.role === 'mentor' ? '/mentor-portal' : '/dashboard'
+  const portalLabel = user?.role === 'admin' ? 'Admin Panel' : user?.role === 'mentor' ? 'Guide Portal' : 'Dashboard'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -156,11 +158,7 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {user.role === 'mentor' ? (
-                <Link to="/mentor-portal" className="btn btn-ghost btn-sm hide-mobile">Guide Portal</Link>
-              ) : (
-                <Link to="/dashboard" className="btn btn-ghost btn-sm hide-mobile">Dashboard</Link>
-              )}
+              <Link to={portalPath} className="btn btn-ghost btn-sm hide-mobile">{portalLabel}</Link>
               <div className="navbar__notif-container" style={{ position: 'relative' }}>
                 <button
                   className="navbar__notif"
@@ -234,11 +232,7 @@ export default function Navbar() {
                       </div>
                     </div>
                     <div className="divider" style={{ margin: '0.5rem 0' }} />
-                    {user.role === 'mentor' ? (
-                      <Link to="/mentor-portal" className="navbar__dropdown-item"><User size={15} /> Guide Portal</Link>
-                    ) : (
-                      <Link to="/dashboard" className="navbar__dropdown-item"><User size={15} /> Dashboard</Link>
-                    )}
+                    <Link to={portalPath} className="navbar__dropdown-item"><User size={15} /> {portalLabel}</Link>
                     <Link to="/settings" className="navbar__dropdown-item"><Settings size={15} /> Settings</Link>
                     <button className="navbar__dropdown-item navbar__dropdown-item--danger" onClick={handleLogout}>
                       <LogOut size={15} /> Sign Out
@@ -314,12 +308,12 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link
-                  to={user.role === 'mentor' ? "/mentor-portal" : "/dashboard"}
+                  to={portalPath}
                   className="btn btn-outline"
                   style={{ flex: 1 }}
                   onClick={() => setMenuOpen(false)}
                 >
-                  {user.role === 'mentor' ? "Guide Portal" : "Dashboard"}
+                  {portalLabel}
                 </Link>
                 <button
                   className="btn btn-ghost"

@@ -23,7 +23,9 @@ export function LoginPage() {
     try {
       const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -44,7 +46,9 @@ export function LoginPage() {
     try {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -67,7 +71,9 @@ export function LoginPage() {
       const loggedInUser = await signInWithEmail(email, password, role)
       
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -208,7 +214,11 @@ export function RegisterPage() {
     try {
       const loggedInUser = await signInWithGoogle('user')
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -227,7 +237,11 @@ export function RegisterPage() {
     try {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -247,7 +261,11 @@ export function RegisterPage() {
       const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
       
       setUser(newUser)
-      navigate('/onboarding')
+      if (newUser.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/onboarding')
+      }
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Failed to create account')
