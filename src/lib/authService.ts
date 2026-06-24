@@ -8,6 +8,8 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   onAuthStateChanged,
+  sendEmailVerification,
+  reload,
 } from 'firebase/auth'
 import { generateLFID } from '../utils/generateLFID'
 import { auth } from './firebase'
@@ -21,8 +23,17 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
     const safeRole = roleForEmail(email, role === 'mentor' ? 'user' : role)
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
+    await sendEmailVerification(firebaseUser)
+    await signOut(auth)
+
+    await reload(firebaseUser)
+    if (!firebaseUser.emailVerified) {
+      await signOut(auth)
+      throw new Error('Email not verified. Please check your inbox for a verification email.')
+    }
 
     await updateProfile(firebaseUser, { displayName })
+    await sendEmailVerification(firebaseUser) 
 
     const newUser: UserType = {
       uid: firebaseUser.uid,
