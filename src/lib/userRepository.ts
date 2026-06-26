@@ -372,68 +372,19 @@ const mapGuideDocToMentor = (uid: string, data: any): Mentor => {
 }
 
 export const subscribeToMentors = (callback: (mentors: Mentor[]) => void) => {
-  const usersRef = collection(db, 'users')
-  const q = query(usersRef, where('role', '==', 'mentor'))
+  // Public mentor listings read from `guides` (allow read: true in Firestore rules).
+  // Approved mentor profiles are synced here via publishMentorGuideProfile().
   const guidesRef = collection(db, 'guides')
 
-  let userMentors: Mentor[] = []
-  let guideMentors: Mentor[] = []
-  const emit = () => {
-    const merged = new Map<string, Mentor>()
-    guideMentors.forEach(mentor => merged.set(mentor.uid, mentor))
-    userMentors.forEach(mentor => merged.set(mentor.uid, mentor))
-    callback(Array.from(merged.values()).filter(mentor => mentor.isVerified !== false))
-  }
-
-  const unsubscribeGuides = onSnapshot(guidesRef, (snapshot) => {
-    guideMentors = snapshot.docs
-      .filter(docSnap => docSnap.data().source === 'users')
+  return onSnapshot(guidesRef, (snapshot) => {
+    const mentors = snapshot.docs
       .map(docSnap => mapGuideDocToMentor(docSnap.id, docSnap.data()))
       .filter(mentor => mentor.isVerified !== false)
-    emit()
-  }, (err) => {
-    console.error('Failed to subscribe to public guides:', err)
-    guideMentors = []
-    emit()
-  })
-
-  const unsubscribeUsers = onSnapshot(q, (snapshot) => {
-    userMentors = snapshot.docs.map(docSnap => {
-      const data = docSnap.data()
-      const categories = normalizeMentorCategories(data.categories)
-      return {
-        uid: docSnap.id,
-        displayName: data.displayName || data.fullName || 'Mentor',
-        email: data.email || '',
-        photoURL: data.photoURL || '',
-        bio: data.bio || data.about || '',
-        domains: data.domains || [],
-        expertise: data.expertise || data.expertiseDomains || [],
-        categories,
-        sessionPrice: getLowestCategoryPrice(categories),
-        rating: data.rating || 5.0,
-        reviewCount: data.reviewCount || 0,
-        totalSessions: data.totalSessions || 0,
-        availability: data.availability || {},
-        yearsOfExperience: Number(data.yearsOfExperience || data.experience || 0),
-        education: data.education || data.qualification || '',
-        qualification: data.qualification || data.education || '',
-        languages: data.languages || data.languagesKnown || ['English', 'Hindi'],
-        isVerified: data.isVerified !== undefined ? data.isVerified : true,
-        certifications: data.certifications || [],
-      } as Mentor
-    })
-    emit()
+    callback(mentors)
   }, (err) => {
     console.error('Failed to subscribe to mentors:', err)
-    userMentors = []
-    emit()
+    callback([])
   })
-
-  return () => {
-    unsubscribeGuides()
-    unsubscribeUsers()
-  }
 }
 
 export const updateUserMentorInterests = async (uid: string, interests: string[]): Promise<void> => {
