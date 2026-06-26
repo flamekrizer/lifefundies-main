@@ -241,9 +241,9 @@ export const createBooking = async (bookingDetails: {
 export const confirmPayment = async (paymentDetails: {
   bookingId: string
   paymentId: string
-  razorpayOrderId: string
-  razorpayPaymentId: string
-  razorpaySignature: string
+  cashfreeOrderId: string
+  cashfreePaymentId: string
+  cashfreeTransactionId: string
 }) => {
   try {
     const result = await runTransaction(db, async (transaction) => {
@@ -267,9 +267,9 @@ export const confirmPayment = async (paymentDetails: {
 
       transaction.update(bookingRef, {
         paymentId: paymentDetails.paymentId,
-        cashfreeOrderId: paymentDetails.razorpayOrderId,
-        cashfreePaymentId: paymentDetails.razorpayPaymentId,
-        cashfreeTransactionId: paymentDetails.razorpaySignature,
+        cashfreeOrderId: paymentDetails.cashfreeOrderId,
+        cashfreePaymentId: paymentDetails.cashfreePaymentId,
+        cashfreeTransactionId: paymentDetails.cashfreeTransactionId,
         paymentStatus: 'completed',
         status: 'pending',
         paidAt: serverTimestamp(),
@@ -283,9 +283,9 @@ export const confirmPayment = async (paymentDetails: {
         userId: bookingData.userId,
         amount: bookingData.finalAmount,
         currency: 'INR',
-        razorpayOrderId: paymentDetails.razorpayOrderId,
-        razorpayPaymentId: paymentDetails.razorpayPaymentId,
-        razorpaySignature: paymentDetails.razorpaySignature,
+        cashfreeOrderId: paymentDetails.cashfreeOrderId,
+        cashfreePaymentId: paymentDetails.cashfreePaymentId,
+        cashfreeTransactionId: paymentDetails.cashfreeTransactionId,
         status: 'completed',
         createdAt: serverTimestamp(),
         completedAt: serverTimestamp()
