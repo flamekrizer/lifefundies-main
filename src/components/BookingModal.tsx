@@ -117,13 +117,12 @@ export default function BookingModal({ guide, isOpen, onClose, onSuccess }: Book
             console.log('Cashfree success callback. Confirming payment in database...');
             // 3. Update database: mark booking as paid and create sessions
             await confirmPayment({
-              bookingId: currentBookingId,
-              paymentId: paymentData.paymentId,
-              razorpayOrderId: paymentData.orderId,
-              razorpayPaymentId: paymentData.paymentId,
-              razorpaySignature: paymentData.transactionId || '',
+            bookingId: currentBookingId,
+            paymentId: paymentData.paymentId,
+            cashfreeOrderId: paymentData.orderId,
+            cashfreePaymentId: paymentData.paymentId,
+            cashfreeTransactionId: paymentData.transactionId || '',
             });
-
             console.log('Booking & Payment successfully completed!');
             setStep(4); // Move to request submitted screen
             setLoading(false);
