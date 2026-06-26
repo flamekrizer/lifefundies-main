@@ -35,10 +35,12 @@ service cloud.firestore {
 
     // Mentor profiles are public (Mentors page + landing work without login).
     // Signed-in users can read their own doc; admins can read all users.
+    // Split get/list so role-filtered queries work for unauthenticated visitors.
     match /users/{userId} {
-      allow read: if resource.data.role == 'mentor' ||
-                  (signedIn() && request.auth.uid == userId) ||
-                  isAdmin();
+      allow get: if resource.data.role == 'mentor' ||
+                 (signedIn() && request.auth.uid == userId) ||
+                 isAdmin();
+      allow list: if resource.data.role == 'mentor' || isAdmin();
       allow create: if signedIn()
                     && request.auth.uid == userId
                     && (
