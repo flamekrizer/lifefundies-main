@@ -33,14 +33,12 @@ service cloud.firestore {
       return isAdmin() || isGuideOwner(guideId);
     }
 
-    // Allow any authenticated user (email / google / anonymous)
+    // Mentor profiles are public (Mentors page + landing work without login).
+    // Signed-in users can read their own doc; admins can read all users.
     match /users/{userId} {
-      allow read: if signedIn()
-                  && (
-                    request.auth.uid == userId ||
-                    resource.data.role == 'mentor' ||
-                    isAdmin()
-                  );
+      allow read: if resource.data.role == 'mentor' ||
+                  (signedIn() && request.auth.uid == userId) ||
+                  isAdmin();
       allow create: if signedIn()
                     && request.auth.uid == userId
                     && (
