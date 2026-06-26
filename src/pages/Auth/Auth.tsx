@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword } from '../../lib/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword, EMAIL_VERIFICATION_PENDING } from '../../lib/authService'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'user' | 'mentor' | 'admin'>('user')
+  const [role, setRole] = useState<'user' | 'mentor'>('user')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -21,7 +21,7 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithGoogle(role === 'admin' ? 'user' : role)
+      const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
       if (loggedInUser.role === 'admin') {
         navigate('/admin')
@@ -68,8 +68,7 @@ export function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const loggedInUser = await signInWithEmail(email, password, role === 'admin' ? 'user' : role)
-      
+      const loggedInUser = await signInWithEmail(email, password, role)
       setUser(loggedInUser)
       if (loggedInUser.role === 'admin') {
         navigate('/admin')
@@ -123,18 +122,6 @@ export function LoginPage() {
             <div>
               <p className="role-btn__label">Mentor</p>
               <p className="body-sm text-muted">I want to guide</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            className={`role-btn ${role === 'admin' ? 'role-btn--active' : ''}`}
-            id="login-role-admin"
-            onClick={() => setRole('admin')}
-          >
-            <span className="role-btn__icon">🔐</span>
-            <div>
-              <p className="role-btn__label">Admin</p>
-              <p className="body-sm text-muted">Manage approvals</p>
             </div>
           </button>
         </div>
@@ -270,10 +257,15 @@ export function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
-      
-      setUser(newUser)
-      if (newUser.role === 'admin') {
+      const signUpResult = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+
+      if (signUpResult === EMAIL_VERIFICATION_PENDING) {
+        setError('A verification link has been sent to your email. Please verify your account before signing in.')
+        return
+      }
+
+      setUser(signUpResult)
+      if (signUpResult.role === 'admin') {
         navigate('/admin')
       } else {
         navigate('/onboarding')
@@ -321,18 +313,6 @@ export function RegisterPage() {
             <div>
               <p className="role-btn__label">Mentor</p>
               <p className="body-sm text-muted">Apply for mentor approval</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            className="role-btn"
-            id="role-admin"
-            onClick={() => navigate('/login')}
-          >
-            <span className="role-btn__icon">🔐</span>
-            <div>
-              <p className="role-btn__label">Admin</p>
-              <p className="body-sm text-muted">Sign in to manage</p>
             </div>
           </button>
         </div>
@@ -461,7 +441,12 @@ export function MentorRegisterPage() {
     try {
       let activeUser = user
       if (!activeUser) {
-        activeUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+        const signUpResult = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+        if (signUpResult === EMAIL_VERIFICATION_PENDING) {
+          setError('Please verify your email before submitting your mentor application.')
+          return
+        }
+        activeUser = signUpResult
         setUser(activeUser)
       }
       await submitApplication(activeUser.uid)
