@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   limit,
+  onSnapshot,
   Timestamp,
   increment,
   arrayUnion,
@@ -23,8 +24,82 @@ import type { Post, Comment } from '../types'
 
 /**
  * CommunityRepository
- * Coordinates posts, comments, text reviews, and star session ratings.
+ * Coordinates posts, comments, chat rooms, text reviews, and star session ratings.
  */
+
+// ── Chat rooms ──────────────────────────────────────
+
+export const CHAT_MESSAGE_MAX_LENGTH = 500
+
+export interface ChatRoomMessage {
+  id: string
+  roomId: string
+  authorId: string
+  authorName: string
+  message: string
+  createdAt: string
+}
+
+export const getChatRoomId = (room: string) =>
+  room.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'general'
+
+export const isCrisisChatRoom = (groupTitle: string) =>
+  groupTitle.toLowerCase().includes('crisis')
+
+const mapChatDoc = (docSnap: { id: string; data: () => Record<string, unknown> }): ChatRoomMessage => {
+  const data = docSnap.data()
+  const createdAt = data.createdAt as { toDate?: () => Date } | undefined
+  return {
+    id: docSnap.id,
+    roomId: String(data.roomId || ''),
+    authorId: String(data.authorId || ''),
+    authorName: String(data.authorName || 'Anonymous'),
+    message: String(data.message || ''),
+    createdAt: createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+  }
+}
+
+export const subscribeToChatMessages = (
+  roomId: string,
+  callback: (messages: ChatRoomMessage[]) => void,
+  onError?: (error: Error) => void
+) => {
+  const q = query(
+    collection(db, 'chat_messages'),
+    where('roomId', '==', roomId),
+    orderBy('createdAt', 'desc'),
+    limit(100)
+  )
+
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(mapChatDoc).reverse()
+    callback(messages)
+  }, (error) => {
+    console.error('Chat subscription error:', error)
+    onError?.(error)
+  })
+}
+
+export const sendChatMessage = async (
+  roomId: string,
+  authorId: string,
+  authorName: string,
+  message: string
+) => {
+  const trimmed = message.trim()
+  if (!trimmed) throw new Error('Message cannot be empty')
+  if (trimmed.length > CHAT_MESSAGE_MAX_LENGTH) {
+    throw new Error(`Message must be ${CHAT_MESSAGE_MAX_LENGTH} characters or fewer`)
+  }
+
+  await addDoc(collection(db, 'chat_messages'), {
+    roomId,
+    message: trimmed,
+    authorId,
+    authorName,
+    createdAt: serverTimestamp(),
+  })
+}
 
 // ── Posts ──────────────────────────────────────
 
@@ -86,6 +161,31 @@ export const getPosts = async (
     console.error('Error fetching posts:', error)
     return []
   }
+}
+
+export const subscribeToPosts = (
+  callback: (posts: Post[]) => void,
+  limitCount = 100,
+  onError?: (error: Error) => void
+) => {
+  const q = query(
+    collection(db, 'community_posts'),
+    orderBy('createdAt', 'desc'),
+    limit(limitCount)
+  )
+
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+    })) as Post[]
+    callback(list)
+  }, (error) => {
+    console.error('Error subscribing to posts:', error)
+    onError?.(error)
+    callback([])
+  })
 }
 
 export const getUserPosts = async (userId: string) => {
