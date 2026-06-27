@@ -1,10 +1,35 @@
-import { useState, useEffect } from 'react'
-import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X, Loader, Send } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { MessageSquare, TrendingUp, Search, ThumbsUp, MessageCircle, Plus, Eye, EyeOff, X, Loader, Send, Phone } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import { getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
-import { addComment, createPost, getComments, getPosts, upvoteComment, upvotePost } from '../../lib/communityRepository'
+import { signInAnonymously } from '../../lib/authService'
+import {
+  addComment,
+  createPost,
+  getComments,
+  getPosts,
+  upvoteComment,
+  upvotePost,
+  subscribeToPosts,
+  subscribeToChatMessages,
+  sendChatMessage,
+  getChatRoomId,
+  isCrisisChatRoom,
+  CHAT_MESSAGE_MAX_LENGTH,
+  type ChatRoomMessage,
+} from '../../lib/communityRepository'
 import type { Comment, Post } from '../../types'
+
+// ============================================
+// Helpers
+// ============================================
+
+const CRISIS_HELPLINES = [
+  { name: 'Vandrevala Foundation', number: '1860-2662-345', note: '24/7 mental health support' },
+  { name: 'iCall', number: '9152987821', note: 'Mon–Sat, 8 am–10 pm' },
+  { name: 'Emergency', number: '112', note: 'Immediate danger' },
+]
 
 const CHAT_ROOM_GROUPS = [
   {
@@ -38,11 +63,6 @@ const CHAT_ROOM_GROUPS = [
     rooms: ['Survivor communities', 'Life struggles', 'Career stress', 'Student pressure rooms'],
   },
   {
-    title: 'AI Emotional Chat Rooms',
-    desc: 'Chat with bots for emotional relief.',
-    rooms: ['AI therapist', 'Mood tracker bot', 'Emotional companion bot', 'Meditation assistant'],
-  },
-  {
     title: 'Age-Based Emotional Rooms',
     desc: 'Support based on life stage.',
     rooms: ['Teen emotional support', 'College stress rooms', 'Adult life struggles', 'Senior loneliness rooms'],
@@ -64,28 +84,8 @@ interface ChatRoomSelection {
   room: string
 }
 
-interface ChatRoomMessage {
-  id: string
-  roomId: string
-  authorId: string
-  authorName: string
-  message: string
-  createdAt: string
-}
-
-const getRoomId = (room: string) =>
-  room.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'general'
-
-const getGuestId = () => {
-  const key = 'lifefundies-chat-guest-id'
-  const existing = window.localStorage.getItem(key)
-  if (existing) return existing
-  const created = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  window.localStorage.setItem(key, created)
-  return created
-}
-
 export default function CommunityPage() {
+  const { user, setUser, setAuthModalOpen } = useAuthStore()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'trending' | 'recent' | 'my-posts'>('trending')
@@ -99,42 +99,9 @@ export default function CommunityPage() {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatSending, setChatSending] = useState(false)
   const [chatError, setChatError] = useState('')
-  const { user, setAuthModalOpen } = useAuthStore()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    loadPosts()
-  }, [])
-
-  useEffect(() => {
-    if (!activeChatRoom) return
-
-    let cancelled = false
-    const loadRoomMessages = async () => {
-      setChatError('')
-      setChatLoading(true)
-      try {
-        const response = await fetch(`/api/chatrooms/${getRoomId(activeChatRoom.room)}/messages`)
-        if (!response.ok) throw new Error(`Chat room unavailable: ${response.status}`)
-        const data = await response.json()
-        if (!cancelled) setChatMessages(Array.isArray(data.messages) ? data.messages : [])
-      } catch (error) {
-        console.error('Failed to load chat room:', error)
-        if (!cancelled) setChatError('Chat room connect nahi ho pa raha. Please refresh karke try karein.')
-      } finally {
-        if (!cancelled) setChatLoading(false)
-      }
-    }
-
-    void loadRoomMessages()
-    const interval = window.setInterval(loadRoomMessages, 4000)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-  }, [activeChatRoom])
-
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setLoading(true)
     try {
       const fetchedPosts = await getPosts(undefined, 'recent', 100)
@@ -144,9 +111,61 @@ export default function CommunityPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const toggleUpvote = async (postId: string) => {
+  useEffect(() => {
+    setLoading(true)
+    const unsubscribe = subscribeToPosts(
+      (fetchedPosts) => {
+        setPosts(fetchedPosts)
+        setLoading(false)
+      },
+      100,
+      () => setLoading(false)
+    )
+    return () => unsubscribe()
+  }, [])
+
+  const ensureChatAuth = useCallback(async () => {
+    if (user) return user
+    try {
+      const anonymousUser = await signInAnonymously()
+      setUser(anonymousUser)
+      return anonymousUser
+    } catch (error) {
+      console.error('Anonymous sign-in failed:', error)
+      setAuthModalOpen(true)
+      return null
+    }
+  }, [user, setUser, setAuthModalOpen])
+
+  useEffect(() => {
+    if (!activeChatRoom) return
+
+    const roomId = getChatRoomId(activeChatRoom.room)
+    setChatMessages([])
+    setChatLoading(true)
+    setChatError('')
+
+    const unsubscribe = subscribeToChatMessages(
+      roomId,
+      (messages) => {
+        setChatMessages(messages)
+        setChatLoading(false)
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      },
+      () => {
+        setChatError('Could not connect to this chat room. Please refresh and try again.')
+        setChatLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [activeChatRoom])
+
+  const toggleUpvote = useCallback(async (postId: string) => {
     if (!user) {
       setAuthModalOpen(true)
       return
@@ -156,7 +175,7 @@ export default function CommunityPage() {
       if (p.id === postId) {
         const upvoters = p.upvoters || []
         const isCurrentlyUpvoted = upvoters.includes(user.uid)
-        const newUpvoters = isCurrentlyUpvoted 
+        const newUpvoters = isCurrentlyUpvoted
           ? upvoters.filter((id: string) => id !== user.uid)
           : [...upvoters, user.uid]
         return {
@@ -172,42 +191,67 @@ export default function CommunityPage() {
       await upvotePost(postId, user.uid)
     } catch (error) {
       console.error('Failed to upvote:', error)
-      setPosts(prevPosts => prevPosts.map(p => {
-        if (p.id === postId) {
-          const upvoters = p.upvoters || []
-          const isCurrentlyUpvoted = upvoters.includes(user.uid)
-          const newUpvoters = isCurrentlyUpvoted 
-            ? upvoters.filter((id: string) => id !== user.uid)
-            : [...upvoters, user.uid]
-          return {
-            ...p,
-            upvotes: isCurrentlyUpvoted ? p.upvotes - 1 : p.upvotes + 1,
-            upvoters: newUpvoters
-          }
-        }
-        return p
-      }))
+      // Rollback by reloading just the posts
+      loadPosts()
     }
-  }
+  }, [user, setAuthModalOpen, loadPosts])
 
-  const filtered = posts.filter(p =>
+  const filtered = useMemo(() => posts.filter(p =>
     (!selectedDomain || p.domain === selectedDomain) &&
-    (!searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+    (!searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     p.content.toLowerCase().includes(searchQuery.toLowerCase()))
+  ), [posts, selectedDomain, searchQuery])
 
-  const sortedPosts = [...filtered].sort((a, b) => {
+  const sortedPosts = useMemo(() => [...filtered].sort((a, b) => {
     if (activeTab === 'trending') return b.upvotes - a.upvotes
     if (activeTab === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    if (activeTab === 'my-posts') return user ? (a.authorId === user.uid ? -1 : 1) : 1
+    if (activeTab === 'my-posts') {
+      if (!user) return 0
+      return a.authorId === user.uid ? -1 : 1
+    }
     return 0
-  }).filter(p => activeTab !== 'my-posts' || (user && p.authorId === user.uid))
+  }).filter(p => activeTab !== 'my-posts' || (user && p.authorId === user.uid)), [filtered, activeTab, user])
 
-  const timeAgo = (date: Date) => {
-    const h = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
+  const timeAgo = useCallback((date: Date | string) => {
+    const d = new Date(date)
+    const h = Math.floor((Date.now() - d.getTime()) / 3600000)
     if (h < 1) return 'Just now'
     if (h < 24) return `${h}h ago`
     return `${Math.floor(h / 24)}d ago`
-  }
+  }, [])
+
+  const sendChatRoomMessage = useCallback(async () => {
+    if (!activeChatRoom || !chatInput.trim() || chatSending) return
+
+    const message = chatInput.trim()
+    if (message.length > CHAT_MESSAGE_MAX_LENGTH) {
+      setChatError(`Messages must be ${CHAT_MESSAGE_MAX_LENGTH} characters or fewer.`)
+      return
+    }
+
+    const roomId = getChatRoomId(activeChatRoom.room)
+
+    setChatInput('')
+    setChatSending(true)
+    setChatError('')
+
+    try {
+      const chatUser = await ensureChatAuth()
+      if (!chatUser) {
+        setChatInput(message)
+        return
+      }
+
+      const authorName = chatUser.isAnonymous ? 'Anonymous' : (chatUser.displayName || 'User')
+      await sendChatMessage(roomId, chatUser.uid, authorName, message)
+    } catch (error) {
+      console.error('Failed to send chat message:', error)
+      setChatError('Could not send your message. Please try again.')
+      setChatInput(message)
+    } finally {
+      setChatSending(false)
+    }
+  }, [activeChatRoom, chatInput, chatSending, ensureChatAuth])
 
   const openChatRoom = (groupTitle: string, room: string) => {
     setActiveChatRoom({ groupTitle, room })
@@ -216,42 +260,9 @@ export default function CommunityPage() {
     setChatError('')
   }
 
-  const sendChatRoomMessage = async () => {
-    if (!activeChatRoom || !chatInput.trim() || chatSending) return
-
-    const message = chatInput.trim()
-    const authorId = user?.uid || getGuestId()
-    const authorName = user?.displayName || 'Anonymous'
-    setChatInput('')
-    setChatSending(true)
-    setChatError('')
-
-    try {
-      const response = await fetch(`/api/chatrooms/${getRoomId(activeChatRoom.room)}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, authorId, authorName }),
-      })
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '')
-        throw new Error(detail || `Chat send failed: ${response.status}`)
-      }
-
-      const savedMessage = await response.json()
-      setChatMessages(current => [...current, savedMessage])
-    } catch (error) {
-      console.error('Failed to send chat room message:', error)
-      setChatError('Message send nahi hua. Please dobara try karein.')
-      setChatInput(message)
-    } finally {
-      setChatSending(false)
-    }
-  }
-
   return (
     <div className="page-wrapper">
-      <div className="community-page"style={{ backgroundImage: "url('/Community.jpeg')" }}>
+      <div className="community-page" style={{ backgroundImage: "url('/Community.jpeg')" }}>
         <div className="container">
           <div className="community__layout">
             {/* Main */}
@@ -261,8 +272,8 @@ export default function CommunityPage() {
                   <h1 className="display-2">Community <span className="text-gradient">Forum</span></h1>
                   <p className="text-muted">A safe space to share, learn, and connect with peers on the same journey.</p>
                 </div>
-                <button
-                  className="btn btn-primary"
+                <button 
+                  className="btn btn-primary" 
                   onClick={() => {
                     if (!user) {
                       setAuthModalOpen(true)
@@ -291,11 +302,11 @@ export default function CommunityPage() {
 
               {/* Tabs */}
               <div className="community__tabs animate-fadeInUp delay-100">
-                {(['trending', 'recent', 'my-posts'] as const).map(tab => (
+                {['trending', 'recent', 'my-posts'].map(tab => (
                   <button
                     key={tab}
                     className={`community__tab ${activeTab === tab ? 'community__tab--active' : ''}`}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => setActiveTab(tab as typeof activeTab)}
                     id={`tab-${tab}`}
                   >
                     {tab === 'trending' && <TrendingUp size={14} />}
@@ -306,6 +317,7 @@ export default function CommunityPage() {
                 ))}
               </div>
 
+              {/* Chat Rooms Section */}
               <section className="chat-rooms-section animate-fadeInUp delay-200" aria-labelledby="chat-rooms-title">
                 <div className="chat-rooms-section__header">
                   <div>
@@ -321,7 +333,6 @@ export default function CommunityPage() {
                     <MessageCircle size={15} /> Start Chatting
                   </button>
                 </div>
-
                 <div className="chat-rooms-grid">
                   {CHAT_ROOM_GROUPS.map((group, index) => (
                     <article key={group.title} className="chat-room-card">
@@ -347,6 +358,7 @@ export default function CommunityPage() {
                 </div>
               </section>
 
+              {/* Active Chat Room */}
               {activeChatRoom && (
                 <section className="chat-room-live" aria-label={`${activeChatRoom.room} chat room`}>
                   <header className="chat-room-live__header">
@@ -355,37 +367,61 @@ export default function CommunityPage() {
                       <h3 className="heading-2">{activeChatRoom.room}</h3>
                       <p className="body-sm text-muted">Anonymous peer chat. Be kind, avoid personal details, and seek local emergency help if anyone is in immediate danger.</p>
                     </div>
-                    <button type="button" className="chat-room-live__close" aria-label="Close chat room" onClick={() => setActiveChatRoom(null)}>
+                    <button
+                      type="button"
+                      className="chat-room-live__close"
+                      aria-label="Close chat room"
+                      onClick={() => setActiveChatRoom(null)}
+                    >
                       <X size={18} />
                     </button>
                   </header>
-
+                  {activeChatRoom && isCrisisChatRoom(activeChatRoom.groupTitle) && (
+                    <div className="chat-room-live__crisis" role="alert">
+                      <Phone size={16} aria-hidden="true" />
+                      <div>
+                        <p className="body-sm" style={{ fontWeight: 600, marginBottom: 'var(--sp-2)' }}>
+                          If you or someone else is in immediate danger, call emergency services now.
+                        </p>
+                        <ul className="chat-room-live__helplines">
+                          {CRISIS_HELPLINES.map(line => (
+                            <li key={line.number}>
+                              <strong>{line.name}:</strong>{' '}
+                              <a href={`tel:${line.number.replace(/[^0-9+]/g, '')}`}>{line.number}</a>
+                              <span className="text-muted"> — {line.note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="body-sm text-muted" style={{ marginTop: 'var(--sp-2)' }}>
+                          Peer chat is not a substitute for professional crisis care.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="chat-room-live__messages">
                     {chatLoading && chatMessages.length === 0 ? (
                       <div className="chat-room-live__state">
-                        <Loader size={18} className="animate-spin" />
-                        Loading room...
+                        <Loader size={18} className="animate-spin" /> Loading room...
                       </div>
                     ) : chatMessages.length === 0 ? (
                       <div className="chat-room-live__state">No messages yet. Start the conversation gently.</div>
                     ) : (
                       chatMessages.map(message => {
-                        const isMine = message.authorId === user?.uid || (!user && message.authorId === window.localStorage.getItem('lifefundies-chat-guest-id'))
+                        const isMine = message.authorId === user?.uid
                         return (
                           <article key={message.id} className={`chat-room-live__message ${isMine ? 'chat-room-live__message--mine' : ''}`}>
                             <div className="chat-room-live__meta">
                               <span>{message.authorName || 'Anonymous'}</span>
-                              <time>{timeAgo(new Date(message.createdAt))}</time>
+                              <time>{timeAgo(message.createdAt)}</time>
                             </div>
                             <p>{message.message}</p>
                           </article>
                         )
                       })
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
-
                   {chatError && <p className="chat-room-live__error">{chatError}</p>}
-
                   <form
                     className="chat-room-live__form"
                     onSubmit={(event) => {
@@ -393,27 +429,33 @@ export default function CommunityPage() {
                       void sendChatRoomMessage()
                     }}
                   >
-                    <input
-                      value={chatInput}
-                      onChange={event => setChatInput(event.target.value)}
-                      placeholder={`Message ${activeChatRoom.room}...`}
-                      maxLength={800}
-                      aria-label="Chat room message"
-                      disabled={chatSending}
-                    />
+                    <div className="chat-room-live__input-wrap">
+                      <input
+                        type="text"
+                        placeholder={user ? 'Type a message...' : 'Type a message (continues as guest)...'}
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value.slice(0, CHAT_MESSAGE_MAX_LENGTH))}
+                        disabled={chatSending}
+                        className="form-input"
+                        maxLength={CHAT_MESSAGE_MAX_LENGTH}
+                        aria-describedby="chat-char-count"
+                      />
+                      <span id="chat-char-count" className="chat-room-live__char-count body-sm text-muted">
+                        {chatInput.length}/{CHAT_MESSAGE_MAX_LENGTH}
+                      </span>
+                    </div>
                     <button type="submit" className="btn btn-primary" disabled={chatSending || !chatInput.trim()}>
-                      {chatSending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
-                      Send
+                      {chatSending ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
                     </button>
                   </form>
                 </section>
               )}
 
-              {/* Posts */}
+              {/* Posts List */}
               <div className="community__posts">
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <Loader size={24} className="animate-spin" style={{ margin: '0 auto' }} />
+                    <Loader size={24} className="animate-spin" />
                   </div>
                 ) : sortedPosts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--clr-text-muted)' }}>
@@ -498,7 +540,7 @@ export default function CommunityPage() {
                     onClick={() => setSelectedDomain('')}
                     id="community-domain-all"
                   >
-                    🌐 All Domains
+                    All Domains
                     <span className="community__domain-count">{posts.length}</span>
                   </button>
                   {LIFE_DOMAINS.map(d => {
@@ -520,7 +562,7 @@ export default function CommunityPage() {
               </div>
 
               <div className="community__widget community__widget--cta animate-fadeInUp delay-300">
-                <div style={{ fontSize: '2rem' }}>🎯</div>
+                <div style={{ fontSize: '2rem' }}>💡</div>
                 <h3 className="heading-3">Need Expert Help?</h3>
                 <p className="body-sm text-muted">Connect with a verified mentor for a 1-on-1 guidance session.</p>
                 <a href="/mentors" className="btn btn-primary btn-sm" style={{ marginTop: 'var(--sp-3)' }}>
@@ -534,14 +576,17 @@ export default function CommunityPage() {
 
       {/* New Post Modal */}
       {showNewPost && (
-        <NewPostModal 
-          onClose={() => setShowNewPost(false)} 
+        <NewPostModal
+          onClose={() => setShowNewPost(false)}
           onSubmit={(newPost) => {
-            setPosts(prev => [newPost, ...prev])
-            loadPosts()
+            // Add current date as createdAt (will be overridden by server timestamp on next refresh)
+            setPosts(prev => [{ ...newPost, createdAt: new Date() }, ...prev])
+            // Don't refetch all posts - we already have the new one in state
           }}
         />
       )}
+
+      {/* Comments Modal */}
       {selectedPost && (
         <CommentsModal
           post={selectedPost}
@@ -553,6 +598,9 @@ export default function CommunityPage() {
   )
 }
 
+// ============================================
+// CommentsModal Component
+// ============================================
 function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () => void; onChanged: () => void }) {
   const { user, setAuthModalOpen } = useAuthStore()
   const [comments, setComments] = useState<Comment[]>([])
@@ -561,20 +609,22 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     setLoading(true)
     try {
       setComments(await getComments(post.id))
+    } catch (error: unknown) {
+      console.error('Failed to load comments:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [post.id])
 
   useEffect(() => {
     loadComments()
-  }, [post.id])
+  }, [loadComments])
 
-  const submitComment = async (e: React.FormEvent) => {
+  const submitComment = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
       setAuthModalOpen(true)
@@ -587,8 +637,8 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
       const newComment = await addComment({
         postId: post.id,
         authorId: user.uid,
-        authorName: isAnonymous ? 'Anonymous' : user.displayName,
-        authorPhotoURL: isAnonymous ? undefined : user.photoURL,
+        authorName: isAnonymous ? 'Anonymous' : user.displayName || 'User',
+        authorPhotoURL: isAnonymous ? '' : (user.photoURL || ''),
         isAnonymous,
         content: content.trim(),
         upvotes: 0,
@@ -596,15 +646,15 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
       setComments(prev => [newComment, ...prev])
       setContent('')
       onChanged()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to add comment:', error)
       alert('Failed to save comment. Please try again.')
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [post.id, user, setAuthModalOpen, content, isAnonymous, onChanged])
 
-  const toggleCommentUpvote = async (commentId: string) => {
+  const toggleCommentUpvote = useCallback(async (commentId: string) => {
     if (!user) {
       setAuthModalOpen(true)
       return
@@ -628,33 +678,18 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
 
     try {
       await upvoteComment(commentId, user.uid)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to upvote comment:', error)
-      // Rollback
-      setComments(prevComments => prevComments.map(c => {
-        if (c.id === commentId) {
-          const upvoters = c.upvoters || []
-          const isCurrentlyUpvoted = upvoters.includes(user.uid)
-          const newUpvoters = isCurrentlyUpvoted
-            ? upvoters.filter((id: string) => id !== user.uid)
-            : [...upvoters, user.uid]
-          return {
-            ...c,
-            upvotes: isCurrentlyUpvoted ? c.upvotes - 1 : c.upvotes + 1,
-            upvoters: newUpvoters
-          }
-        }
-        return c
-      }))
+      loadComments()
     }
-  }
+  }, [user, setAuthModalOpen, loadComments])
 
-  const timeAgo = (date: Date) => {
+  const timeAgo = useCallback((date: Date | string) => {
     const h = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
     if (h < 1) return 'Just now'
     if (h < 24) return `${h}h ago`
     return `${Math.floor(h / 24)}d ago`
-  }
+  }, [])
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Comments">
@@ -664,7 +699,9 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
             <h2 className="heading-2">Comments</h2>
             <p className="body-sm text-muted">{post.title}</p>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close comments"><X size={18} /></button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close comments">
+            <X size={18} />
+          </button>
         </div>
         <div className="modal__body">
           <form className="comment-form" onSubmit={submitComment}>
@@ -674,55 +711,65 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
               placeholder="Write a thoughtful reply..."
               value={content}
               onChange={e => setContent(e.target.value)}
+              disabled={submitting}
               required
             />
             <div className="comment-form__footer">
-              <label className="comment-form__anon">
-                <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} />
-                <span className="body-sm">Comment anonymously</span>
-              </label>
+              {user?.isAnonymous ? (
+                <span className="body-sm text-muted">Comments from guest accounts are always anonymous.</span>
+              ) : (
+                <label className="comment-form__anon">
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={e => setIsAnonymous(e.target.checked)}
+                  />
+                  <span className="body-sm">Comment anonymously</span>
+                </label>
+              )}
               <button className="btn btn-primary btn-sm" type="submit" disabled={submitting || !content.trim()}>
                 {submitting ? <Loader size={16} className="animate-spin" /> : 'Save Comment'}
               </button>
             </div>
           </form>
-
           <div className="comments-list">
             {loading ? (
               <Loader size={20} className="animate-spin" />
             ) : comments.length === 0 ? (
               <p className="body-sm text-muted">No comments yet. Start the conversation.</p>
-            ) : comments.map(comment => (
-              <article className="comment-item" key={comment.id}>
-                <div className="comment-item__header">
-                  <div className="post-card__author">
-                    {comment.isAnonymous ? (
-                      <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
-                        <EyeOff size={12} />
+            ) : (
+              comments.map(comment => (
+                <article className="comment-item" key={comment.id}>
+                  <div className="comment-item__header">
+                    <div className="post-card__author">
+                      {comment.isAnonymous ? (
+                        <div className="avatar avatar-sm" style={{ background: 'var(--clr-bg-alt)', border: '1px solid var(--clr-border)' }}>
+                          <EyeOff size={12} />
+                        </div>
+                      ) : comment.authorPhotoURL ? (
+                        <img src={comment.authorPhotoURL} alt={comment.authorName} className="avatar avatar-sm" style={{ objectFit: 'cover' }} />
+                      ) : (
+                        <div className="avatar avatar-sm" style={{ background: 'var(--clr-primary)', border: '1px solid var(--clr-border)' }}>
+                          {getInitials(comment.authorName)}
+                        </div>
+                      )}
+                      <div>
+                        <p className="post-card__name body-sm">{comment.authorName}</p>
+                        <p className="body-sm text-subtle">{timeAgo(comment.createdAt)}</p>
                       </div>
-                    ) : comment.authorPhotoURL ? (
-                      <img src={comment.authorPhotoURL} alt={comment.authorName} className="avatar avatar-sm" style={{ objectFit: 'cover' }} />
-                    ) : (
-                      <div className="avatar avatar-sm" style={{ background: 'var(--clr-primary)', border: '1px solid var(--clr-border)' }}>
-                        {getInitials(comment.authorName)}
-                      </div>
-                    )}
-                    <div>
-                      <p className="post-card__name body-sm">{comment.authorName}</p>
-                      <p className="body-sm text-subtle">{timeAgo(comment.createdAt)}</p>
                     </div>
+                    <button
+                      className={`post-card__action ${user && comment.upvoters?.includes(user.uid) ? 'post-card__action--active' : ''}`}
+                      onClick={() => toggleCommentUpvote(comment.id)}
+                      type="button"
+                    >
+                      <ThumbsUp size={14} /> {comment.upvotes}
+                    </button>
                   </div>
-                  <button
-                    className={`post-card__action ${user && comment.upvoters?.includes(user.uid) ? 'post-card__action--active' : ''}`}
-                    onClick={() => toggleCommentUpvote(comment.id)}
-                    type="button"
-                  >
-                    <ThumbsUp size={14} /> {comment.upvotes}
-                  </button>
-                </div>
-                <p className="body-sm text-muted">{comment.content}</p>
-              </article>
-            ))}
+                  <p className="body-sm text-muted">{comment.content}</p>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -730,10 +777,23 @@ function CommentsModal({ post, onClose, onChanged }: { post: Post; onClose: () =
   )
 }
 
-function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (post: any) => void }) {
+// ============================================
+// NewPostModal Component
+// ============================================
+
+/** Type for a newly created post before server timestamp is applied */
+type NewPost = Omit<Post, 'createdAt'> & { id: string }
+
+function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (post: NewPost) => void }) {
   const { user } = useAuthStore()
-  const [form, setForm] = useState({ title: '', content: '', domain: '', isAnonymous: false })
+  const [form, setForm] = useState({
+    title: '',
+    content: '',
+    domain: '',
+    isAnonymous: user?.isAnonymous || false
+  })
   const [submitting, setSubmitting] = useState(false)
+
   const update = (field: string, value: unknown) => setForm(f => ({ ...f, [field]: value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -747,19 +807,20 @@ function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p
     try {
       const newPost = await createPost({
         authorId: user.uid,
-        authorName: form.isAnonymous ? 'Anonymous' : user.displayName,
-        authorPhotoURL: form.isAnonymous ? undefined : user.photoURL,
+        authorName: form.isAnonymous ? 'Anonymous' : user.displayName || 'User',
+        authorPhotoURL: form.isAnonymous ? '' : (user.photoURL || ''),
         isAnonymous: form.isAnonymous,
-        domain: form.domain as any,
+        domain: form.domain as typeof LIFE_DOMAINS[number]['id'],
         title: form.title,
         content: form.content,
         upvotes: 0,
         commentCount: 0,
         tags: [form.domain],
       })
+      // newPost matches NewPost type exactly - no casting needed
       onSubmit(newPost)
       onClose()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to create post:', error)
       alert('Failed to create post. Please try again.')
     } finally {
@@ -773,45 +834,84 @@ function NewPostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p
         <form onSubmit={handleSubmit}>
           <div className="modal__header">
             <h2 className="heading-2">Create a Post</h2>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close modal">
+              <X size={18} />
+            </button>
           </div>
+
           <div className="modal__body">
             <div className="form-group">
               <label className="form-label" htmlFor="new-post-title">Title</label>
-              <input className="form-input" placeholder="What's on your mind?" value={form.title} onChange={e => update('title', e.target.value)} id="new-post-title" required />
+              <input
+                className="form-input"
+                placeholder="What's on your mind?"
+                value={form.title}
+                onChange={e => update('title', e.target.value)}
+                id="new-post-title"
+                required
+              />
             </div>
+
             <div className="form-group">
               <label className="form-label" htmlFor="new-post-content">Your story</label>
-              <textarea className="form-input" rows={5} placeholder="Share your experience, question or insight..." value={form.content} onChange={e => update('content', e.target.value)} id="new-post-content" style={{ resize: 'vertical' }} required />
+              <textarea
+                className="form-input"
+                rows={5}
+                placeholder="Share your experience, question or insight..."
+                value={form.content}
+                onChange={e => update('content', e.target.value)}
+                id="new-post-content"
+                style={{ resize: 'vertical' }}
+                required
+              />
             </div>
+
             <div className="form-group">
               <label className="form-label" htmlFor="new-post-domain">Life Domain</label>
-              <select className="form-input" value={form.domain} onChange={e => update('domain', e.target.value)} id="new-post-domain" required>
+              <select
+                className="form-input"
+                value={form.domain}
+                onChange={e => update('domain', e.target.value)}
+                id="new-post-domain"
+                required
+              >
                 <option value="">Select a domain</option>
-                {LIFE_DOMAINS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                {LIFE_DOMAINS.map(d => (
+                  <option key={d.id} value={d.id}>{d.label}</option>
+                ))}
               </select>
             </div>
-            <div className="ob-anon-toggle">
-              <button
-                type="button"
-                className={`ob-toggle ${form.isAnonymous ? 'ob-toggle--on' : ''}`}
-                onClick={() => update('isAnonymous', !form.isAnonymous)}
-                id="post-anon-toggle"
-                aria-pressed={form.isAnonymous}
-              >
-                <div className="ob-toggle__thumb" />
-              </button>
-              <div>
-                <div className="flex gap-2">
-                  {form.isAnonymous ? <EyeOff size={14} /> : <Eye size={14} />}
-                  <span className="body-sm">Post anonymously</span>
-                </div>
-                <p className="body-sm text-muted">Your name won't be displayed</p>
+
+            {user?.isAnonymous ? (
+              <div style={{ padding: '12px', border: '1px solid var(--clr-border)', borderRadius: '12px' }}>
+                <p className="body-sm text-muted">Posts from guest accounts are always anonymous.</p>
               </div>
-            </div>
+            ) : (
+              <div className="ob-anon-toggle">
+                <button
+                  type="button"
+                  className={`ob-toggle ${form.isAnonymous ? 'ob-toggle--on' : ''}`}
+                  onClick={() => update('isAnonymous', !form.isAnonymous)}
+                  id="post-anon-toggle"
+                  aria-pressed={form.isAnonymous}
+                >
+                  <div className="ob-toggle__thumb" />
+                </button>
+                <div>
+                  <div className="flex gap-2">
+                    {form.isAnonymous ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span className="body-sm">Post anonymously</span>
+                  </div>
+                  <p className="body-sm text-muted">Your name won't be displayed</p>
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="modal__footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>
+              Cancel
+            </button>
             <button type="submit" className="btn btn-primary" id="submit-post" disabled={submitting}>
               {submitting ? <Loader size={16} className="animate-spin" /> : 'Post to Community'}
             </button>
