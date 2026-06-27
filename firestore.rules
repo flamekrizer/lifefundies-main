@@ -178,5 +178,19 @@ service cloud.firestore {
                             && resource.data.userId == request.auth.uid;
     }
 
+    // Community chat rooms - public read, authenticated write (includes anonymous auth).
+    match /chat_messages/{messageId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.roomId is string
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() > 0
+                    && request.resource.data.message.size() <= 500
+                    && request.resource.data.authorName is string
+                    && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
   }
 }
