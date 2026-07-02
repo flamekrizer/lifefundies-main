@@ -15,11 +15,37 @@ const initialState: ErrorBoundaryState = {
 }
 
 const showDevDetails = import.meta.env.DEV === true
+const ERROR_RELOAD_KEY = 'lifefundies:error-reload-attempted'
 
 function reportErrorToService(error: Error, errorInfo: React.ErrorInfo): void {
-  // Placeholder for production observability.
-  // Replace this with Sentry.captureException, Crashlytics.logException, LogRocket.captureException, etc.
   console.error('Unhandled React error caught by ErrorBoundary:', error, errorInfo)
+
+  const endpoint = import.meta.env.VITE_ERROR_REPORT_ENDPOINT
+  if (!endpoint) return
+
+  const payload = JSON.stringify({
+    message: error.message,
+    stack: error.stack,
+    componentStack: errorInfo.componentStack,
+    url: window.location.href,
+    userAgent: window.navigator.userAgent,
+    occurredAt: new Date().toISOString(),
+  })
+
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(endpoint, new Blob([payload], { type: 'application/json' }))
+      return
+    }
+    void fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    })
+  } catch {
+    // Reporting must never make the app error state worse.
+  }
 }
 
 const fallbackStyles: React.CSSProperties = {
@@ -63,10 +89,16 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
   }
 
   handleReload = (): void => {
+    if (window.sessionStorage.getItem(ERROR_RELOAD_KEY) === '1') {
+      this.setState(initialState)
+      return
+    }
+    window.sessionStorage.setItem(ERROR_RELOAD_KEY, '1')
     window.location.reload()
   }
 
   handleReset = (): void => {
+    window.sessionStorage.removeItem(ERROR_RELOAD_KEY)
     this.setState(initialState)
   }
 
