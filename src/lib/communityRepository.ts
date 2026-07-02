@@ -17,17 +17,14 @@ import {
   arrayRemove,
   writeBatch,
   runTransaction,
-  serverTimestamp
+  serverTimestamp,
+  Transaction,
+  DocumentReference,
+  setDoc,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { assertAllowedCommunityText } from './contentModeration'
 import type { Post, Comment } from '../types'
-
-/**
- * CommunityRepository
- * Coordinates posts, comments, chat rooms, text reviews, and star session ratings.
- */
-
-// ── Chat rooms ──────────────────────────────────────
 
 export const CHAT_MESSAGE_MAX_LENGTH = 500
 
@@ -91,6 +88,7 @@ export const sendChatMessage = async (
   if (trimmed.length > CHAT_MESSAGE_MAX_LENGTH) {
     throw new Error(`Message must be ${CHAT_MESSAGE_MAX_LENGTH} characters or fewer`)
   }
+  assertAllowedCommunityText(trimmed)
 
   await addDoc(collection(db, 'chat_messages'), {
     roomId,
@@ -101,17 +99,17 @@ export const sendChatMessage = async (
   })
 }
 
-// ── Posts ──────────────────────────────────────
-
 export const createPost = async (postData: Omit<Post, 'id' | 'createdAt'>) => {
+  assertAllowedCommunityText(`${postData.title} ${postData.content}`)
+
   try {
     const docRef = await addDoc(collection(db, 'community_posts'), {
       ...postData,
       upvotes: 0,
       commentCount: 0,
-      createdAt: Timestamp.now(),
+      createdAt: serverTimestamp(),
     })
-    return { id: docRef.id, ...postData }
+    return { id: docRef.id, ...postData, createdAt: new Date() }
   } catch (error) {
     console.error('Error creating post:', error)
     throw error
@@ -125,38 +123,29 @@ export const getPosts = async (
 ) => {
   try {
     let q
+    const collectionRef = collection(db, 'community_posts')
+
     if (domain) {
       q = query(
-        collection(db, 'community_posts'),
-        where('domain', '==', domain)
+        collectionRef,
+        where('domain', '==', domain),
+        orderBy(sortBy === 'trending' ? 'upvotes' : 'createdAt', 'desc'),
+        limit(limitCount)
       )
     } else {
       q = query(
-        collection(db, 'community_posts'),
+        collectionRef,
         orderBy(sortBy === 'trending' ? 'upvotes' : 'createdAt', 'desc'),
         limit(limitCount)
       )
     }
 
     const snapshot = await getDocs(q)
-    let list = snapshot.docs.map(docSnap => ({
+    return snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || new Date(),
     })) as (Post & { id: string })[]
-
-    if (domain) {
-      list.sort((a, b) => {
-        if (sortBy === 'trending') {
-          return (b.upvotes || 0) - (a.upvotes || 0)
-        } else {
-          return b.createdAt.getTime() - a.createdAt.getTime()
-        }
-      })
-      list = list.slice(0, limitCount)
-    }
-
-    return list
   } catch (error) {
     console.error('Error fetching posts:', error)
     return []
@@ -178,7 +167,7 @@ export const subscribeToPosts = (
     const list = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || new Date(),
     })) as Post[]
     callback(list)
   }, (error) => {
@@ -198,7 +187,7 @@ export const getUserPosts = async (userId: string) => {
     const list = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || new Date(),
     })) as (Post & { id: string })[]
     list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     return list
@@ -210,28 +199,62 @@ export const getUserPosts = async (userId: string) => {
 
 export const upvotePost = async (postId: string, userId: string) => {
   try {
-    const postRef = doc(db, 'community_posts', postId)
-    const postSnap = await getDoc(postRef)
+    const result = await runTransaction(db, async (transaction) => {
+      const postRef = doc(db, 'community_posts', postId)
+      const postSnap = await transaction.get(postRef)
+      if (!postSnap.exists()) {
+        throw new Error('Post not found')
+      }
 
-    if (!postSnap.exists()) throw new Error('Post not found')
+      const data = postSnap.data()
+      const upvoters = data.upvoters || []
+      const hasUpvoted = upvoters.includes(userId)
 
-    const upvoters = postSnap.data().upvoters || []
-    const hasUpvoted = upvoters.includes(userId)
+      const newUpvoters = hasUpvoted
+        ? upvoters.filter((id: string) => id !== userId)
+        : [...upvoters, userId]
 
-    if (hasUpvoted) {
-      await updateDoc(postRef, {
-        upvoters: arrayRemove(userId),
-        upvotes: increment(-1),
+      transaction.update(postRef, {
+        upvoters: newUpvoters,
+        upvotes: hasUpvoted ? increment(-1) : increment(1),
       })
-    } else {
-      await updateDoc(postRef, {
-        upvoters: arrayUnion(userId),
-        upvotes: increment(1),
-      })
-    }
-    return !hasUpvoted
+
+      return !hasUpvoted
+    })
+    return result
   } catch (error) {
     console.error('Error upvoting post:', error)
+    throw error
+  }
+}
+
+export const upvoteComment = async (commentId: string, userId: string) => {
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const commentRef = doc(db, 'community_comments', commentId)
+      const commentSnap = await transaction.get(commentRef)
+      if (!commentSnap.exists()) {
+        throw new Error('Comment not found')
+      }
+
+      const data = commentSnap.data()
+      const upvoters = data.upvoters || []
+      const hasUpvoted = upvoters.includes(userId)
+
+      const newUpvoters = hasUpvoted
+        ? upvoters.filter((id: string) => id !== userId)
+        : [...upvoters, userId]
+
+      transaction.update(commentRef, {
+        upvoters: newUpvoters,
+        upvotes: hasUpvoted ? increment(-1) : increment(1),
+      })
+
+      return !hasUpvoted
+    })
+    return result
+  } catch (error) {
+    console.error('Error upvoting comment:', error)
     throw error
   }
 }
@@ -245,24 +268,34 @@ export const deletePost = async (postId: string) => {
   }
 }
 
-// ── Comments ──────────────────────────────────────
-
 export const addComment = async (commentData: Omit<Comment, 'id' | 'createdAt'>) => {
+  assertAllowedCommunityText(commentData.content)
+
   try {
     const batch = writeBatch(db)
-    const createdAt = Timestamp.now()
 
-    const commentRef = await addDoc(collection(db, 'community_comments'), {
+    const commentRef = doc(collection(db, 'community_comments'))
+    const now = serverTimestamp()
+
+    batch.set(commentRef, {
       ...commentData,
       upvotes: 0,
-      createdAt,
+      createdAt: now,
     })
 
     const postRef = doc(db, 'community_posts', commentData.postId)
-    batch.update(postRef, { commentCount: increment(1) })
+    batch.update(postRef, {
+      commentCount: increment(1),
+    })
+
     await batch.commit()
 
-    return { id: commentRef.id, ...commentData, upvotes: 0, createdAt: createdAt.toDate() }
+    return {
+      id: commentRef.id,
+      ...commentData,
+      upvotes: 0,
+      createdAt: new Date(),
+    }
   } catch (error) {
     console.error('Error adding comment:', error)
     throw error
@@ -279,41 +312,13 @@ export const getComments = async (postId: string) => {
     const list = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || new Date(),
     })) as (Comment & { id: string })[]
     list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     return list
   } catch (error) {
     console.error('Error fetching comments:', error)
     return []
-  }
-}
-
-export const upvoteComment = async (commentId: string, userId: string) => {
-  try {
-    const commentRef = doc(db, 'community_comments', commentId)
-    const commentSnap = await getDoc(commentRef)
-
-    if (!commentSnap.exists()) throw new Error('Comment not found')
-
-    const upvoters = commentSnap.data().upvoters || []
-    const hasUpvoted = upvoters.includes(userId)
-
-    if (hasUpvoted) {
-      await updateDoc(commentRef, {
-        upvoters: arrayRemove(userId),
-        upvotes: increment(-1),
-      })
-    } else {
-      await updateDoc(commentRef, {
-        upvoters: arrayUnion(userId),
-        upvotes: increment(1),
-      })
-    }
-    return !hasUpvoted
-  } catch (error) {
-    console.error('Error upvoting comment:', error)
-    throw error
   }
 }
 
@@ -332,9 +337,62 @@ export const deleteComment = async (commentId: string, postId: string) => {
   }
 }
 
-// ============================================
-// ⭐ REVIEWS & RATING CONSOLIDATION
-// ============================================
+function validateRating(rating: number): void {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error('Rating must be an integer between 1 and 5.')
+  }
+}
+
+async function updateMentorReviewStats(
+  transaction: Transaction,
+  mentorId: string,
+  rating: number,
+  prevRating: number,
+  isNew: boolean
+): Promise<void> {
+  const mentorRef = doc(db, 'users', mentorId)
+  const mentorSnap = await transaction.get(mentorRef)
+  if (!mentorSnap.exists()) return
+
+  const data = mentorSnap.data()
+  const currentReviews = data.reviewCount || 0
+  const currentRating = data.rating || 0
+
+  let newCount = currentReviews
+  let newRating = 0
+
+  if (isNew) {
+    newCount += 1
+    newRating = (currentRating * currentReviews + rating) / newCount
+  } else {
+    newRating = (currentRating * currentReviews - prevRating + rating) / currentReviews
+  }
+
+  transaction.update(mentorRef, {
+    rating: Math.round(newRating * 10) / 10,
+    reviewCount: newCount,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+async function getCompletedBooking(
+  userId: string,
+  mentorId: string
+): Promise<{ id: string; data: Record<string, unknown> }> {
+  const q = query(
+    collection(db, 'bookings'),
+    where('userId', '==', userId),
+    where('guideId', '==', mentorId),
+    where('status', '==', 'completed'),
+    limit(1)
+  )
+  const snapshot = await getDocs(q)
+  if (snapshot.empty) {
+    throw new Error('You can review a mentor only after completing a session with them.')
+  }
+  const docSnap = snapshot.docs[0]
+  return { id: docSnap.id, data: docSnap.data() }
+}
 
 export const addReviewAndUpvoteMentor = async (
   mentorId: string,
@@ -343,23 +401,12 @@ export const addReviewAndUpvoteMentor = async (
   text: string,
   sessionId?: string
 ) => {
+  validateRating(rating)
+  assertAllowedCommunityText(text)
+
   try {
-    const completedBookingsQuery = query(
-      collection(db, 'bookings'),
-      where('userId', '==', userId),
-      where('guideId', '==', mentorId),
-      where('status', '==', 'completed'),
-      limit(1)
-    )
-    const completedBookings = await getDocs(completedBookingsQuery)
-
-    if (completedBookings.empty) {
-      throw new Error('You can review a mentor only after completing a session with them.')
-    }
-
-    const completedBooking = completedBookings.docs[0].data()
-    const bookingId = completedBookings.docs[0].id
-    const reviewSessionId = sessionId || completedBooking.sessionId
+    const { id: bookingId, data: bookingData } = await getCompletedBooking(userId, mentorId)
+    const reviewSessionId = sessionId || bookingData.sessionId
 
     if (!reviewSessionId) {
       throw new Error('Completed session record not found for this review.')
@@ -372,47 +419,25 @@ export const addReviewAndUpvoteMentor = async (
       const isNewReview = !reviewSnap.exists()
       const prevRating = isNewReview ? 0 : reviewSnap.data()?.rating || 0
 
-      // Create/update review doc
-      transaction.set(reviewDocRef, {
-        mentorId,
-        userId,
-        bookingId,
-        sessionId: reviewSessionId,
-        rating,
-        text,
-        createdAt: isNewReview ? serverTimestamp() : reviewSnap.data()?.createdAt,
-        updatedAt: serverTimestamp(),
-      }, { merge: true })
+      transaction.set(
+        reviewDocRef,
+        {
+          mentorId,
+          userId,
+          bookingId,
+          sessionId: reviewSessionId,
+          rating,
+          text,
+          createdAt: isNewReview ? serverTimestamp() : reviewSnap.data()?.createdAt,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
 
-      // Update booking rating
       const bookingRef = doc(db, 'bookings', bookingId)
       transaction.update(bookingRef, { rating })
 
-      // Update mentor stats in users collection
-      const mentorRef = doc(db, 'users', mentorId)
-      const mentorSnap = await transaction.get(mentorRef)
-
-      if (mentorSnap.exists()) {
-        const mentor = mentorSnap.data()
-        const currentReviews = mentor.reviewCount || 0
-        const currentRating = mentor.rating || 0
-
-        let newRating = 0
-        let newCount = currentReviews
-
-        if (isNewReview) {
-          newCount += 1
-          newRating = (currentRating * currentReviews + rating) / newCount
-        } else {
-          newRating = (currentRating * currentReviews - prevRating + rating) / currentReviews
-        }
-
-        transaction.update(mentorRef, {
-          rating: Math.round(newRating * 10) / 10,
-          reviewCount: newCount,
-          updatedAt: serverTimestamp()
-        })
-      }
+      await updateMentorReviewStats(transaction, mentorId, rating, prevRating, isNewReview)
 
       return { rating, text, bookingId, sessionId: reviewSessionId }
     })
@@ -425,6 +450,8 @@ export const addReviewAndUpvoteMentor = async (
 }
 
 export const rateSessionAndCreateReview = async (bookingId: string, ratingValue: number): Promise<void> => {
+  validateRating(ratingValue)
+
   try {
     await runTransaction(db, async (transaction) => {
       const bookingRef = doc(db, 'bookings', bookingId)
@@ -438,7 +465,6 @@ export const rateSessionAndCreateReview = async (bookingId: string, ratingValue:
         throw new Error('You can rate a session only after it is completed.')
       }
 
-      // Update booking rating
       transaction.update(bookingRef, { rating: ratingValue })
 
       const mentorId = bookingData.guideId
@@ -451,41 +477,22 @@ export const rateSessionAndCreateReview = async (bookingId: string, ratingValue:
       const isNewReview = !reviewDoc.exists()
       const prevRating = isNewReview ? 0 : reviewDoc.data()?.rating || 0
 
-      transaction.set(reviewDocRef, {
-        mentorId,
-        userId,
-        bookingId,
-        sessionId,
-        rating: ratingValue,
-        text: isNewReview ? '' : reviewDoc.data()?.text || '',
-        createdAt: isNewReview ? serverTimestamp() : reviewDoc.data()?.createdAt,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
+      transaction.set(
+        reviewDocRef,
+        {
+          mentorId,
+          userId,
+          bookingId,
+          sessionId,
+          rating: ratingValue,
+          text: isNewReview ? '' : reviewDoc.data()?.text || '',
+          createdAt: isNewReview ? serverTimestamp() : reviewDoc.data()?.createdAt,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
 
-      // Update mentor stats
-      const mentorRef = doc(db, 'users', mentorId)
-      const mentorSnap = await transaction.get(mentorRef)
-      if (mentorSnap.exists()) {
-        const mentorData = mentorSnap.data()
-        const currentReviews = mentorData.reviewCount || 0
-        const currentRating = mentorData.rating || 0
-
-        let newRating = 0
-        let newCount = currentReviews
-
-        if (isNewReview) {
-          newCount += 1
-          newRating = (currentRating * currentReviews + ratingValue) / newCount
-        } else {
-          newRating = (currentRating * currentReviews - prevRating + ratingValue) / currentReviews
-        }
-
-        transaction.update(mentorRef, {
-          rating: Math.round(newRating * 10) / 10,
-          reviewCount: newCount,
-          updatedAt: serverTimestamp()
-        })
-      }
+      await updateMentorReviewStats(transaction, mentorId, ratingValue, prevRating, isNewReview)
     })
   } catch (error) {
     console.error('Error in rateSessionAndCreateReview:', error)
@@ -493,20 +500,20 @@ export const rateSessionAndCreateReview = async (bookingId: string, ratingValue:
   }
 }
 
-export const getMentorReviews = async (mentorId: string) => {
+export const getMentorReviews = async (mentorId: string, limitCount: number = 20) => {
   try {
     const q = query(
       collection(db, 'mentor_reviews'),
-      where('mentorId', '==', mentorId)
+      where('mentorId', '==', mentorId),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
     )
     const snapshot = await getDocs(q)
-    const list = snapshot.docs.map(docSnap => ({
+    return snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      createdAt: docSnap.data().createdAt?.toDate?.() || new Date(),
     })) as any[]
-    list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    return list
   } catch (error) {
     console.error('Error fetching reviews:', error)
     return []

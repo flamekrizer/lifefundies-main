@@ -164,10 +164,11 @@ img, video { max-width: 100%; display: block; }
   width: auto;
   max-width: min(220px, 52vw);
   object-fit: contain;
+  transform: translateZ(0);
 }
 
 :root[data-theme='dark'] .brand-logo {
-  filter: drop-shadow(0 10px 24px rgba(37, 99, 235, 0.18));
+  filter: none;
 }
 
 :root[data-theme='dark'] .footer__brand-logo,

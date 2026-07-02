@@ -2,16 +2,6 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'missing-firebase-api-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'missing-firebase-auth-domain',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'missing-firebase-project-id',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'missing-firebase-storage-bucket',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'missing-firebase-sender-id',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'missing-firebase-app-id'
-};
-
 const requiredFirebaseVars = [
   { key: 'VITE_FIREBASE_API_KEY', value: import.meta.env.VITE_FIREBASE_API_KEY },
   { key: 'VITE_FIREBASE_AUTH_DOMAIN', value: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN },
@@ -23,11 +13,17 @@ const requiredFirebaseVars = [
 
 const missingVars = requiredFirebaseVars.filter(v => !v.value).map(v => v.key)
 if (missingVars.length) {
-  console.error(
-    `Missing Firebase environment variables: ${missingVars.join(', ')}.\n` +
-    `Add them in Hostinger environment variables and rebuild the app.`
-  )
+  throw new Error(`Missing Firebase environment variables: ${missingVars.join(', ')}. Add them and rebuild the app.`)
 }
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
 
 // Initialize Firebase only if it hasn't been initialized already
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
