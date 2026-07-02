@@ -15,8 +15,11 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@100mslive/hms-video-store": "^0.14.4",
+    "@100mslive/react-sdk": "^0.12.4",
     "express": "^4.19.2",
     "firebase": "^10.14.1",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.378.0",
     "playwright": "^1.60.0",
     "react": "^18.3.1",

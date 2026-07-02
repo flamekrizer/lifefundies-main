@@ -1,5 +1,16 @@
-import { useState, useRef } from 'react';
-import { Video, PhoneOff, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Loader2 } from 'lucide-react';
+import {
+  HMSRoomProvider,
+  useHMSActions,
+  useHMSStore,
+  useVideo,
+  selectIsConnectedToRoom,
+  selectPeers,
+  selectIsLocalAudioEnabled,
+  selectIsLocalVideoEnabled,
+} from '@100mslive/react-sdk';
+import type { HMSPeer } from '@100mslive/hms-video-store';
 import './VideoRoom.css';
 
 interface VideoRoomProps {
@@ -9,34 +20,93 @@ interface VideoRoomProps {
   onLeave?: () => void;
 }
 
-/**
- * 📹 VideoRoom — Embedded Jitsi Meet session (TypeScript)
- * Loads Jitsi Meet inside a secure iFrame with preconfigured privacy settings.
- */
-export default function VideoRoom({ sessionId, userName, guideName, onLeave }: VideoRoomProps) {
-  const [isJoined, setIsJoined] = useState(false);
+function PeerTile({ peer }: { peer: HMSPeer }) {
+  const { videoRef } = useVideo({ trackId: peer.videoTrack });
+  return (
+    <div className="video-tile">
+      <video ref={videoRef} autoPlay muted={peer.isLocal} playsInline className="video-tile-video" />
+      <span className="video-tile-name">{peer.name}{peer.isLocal ? ' (You)' : ''}</span>
+    </div>
+  );
+}
+
+function ActiveCall({ onLeave }: { onLeave: () => void }) {
+  const hmsActions = useHMSActions();
+  const peers = useHMSStore(selectPeers);
+  const isAudioOn = useHMSStore(selectIsLocalAudioEnabled);
+  const isVideoOn = useHMSStore(selectIsLocalVideoEnabled);
+
+  const handleLeave = async () => {
+    await hmsActions.leave();
+    onLeave();
+  };
+
+  return (
+    <div className="video-room-active">
+      <div className="video-room-grid">
+        {peers.map((peer) => (
+          <PeerTile key={peer.id} peer={peer} />
+        ))}
+      </div>
+
+      <div className="video-room-controls">
+        <button
+          type="button"
+          className="btn btn-sm video-room-control-btn"
+          onClick={() => hmsActions.setLocalAudioEnabled(!isAudioOn)}
+        >
+          {isAudioOn ? <Mic size={16} /> : <MicOff size={16} />}
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm video-room-control-btn"
+          onClick={() => hmsActions.setLocalVideoEnabled(!isVideoOn)}
+        >
+          {isVideoOn ? <Video size={16} /> : <VideoOff size={16} />}
+        </button>
+        <button type="button" className="btn btn-sm video-room-leave-btn" onClick={handleLeave}>
+          <PhoneOff size={14} />
+          Leave Call
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VideoRoomInner({ sessionId, userName, guideName, onLeave }: VideoRoomProps) {
+  const hmsActions = useHMSActions();
+  const isConnected = useHMSStore(selectIsConnectedToRoom);
   const [isLoading, setIsLoading] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const roomName = `lf-session-${sessionId}`;
-  const displayName = encodeURIComponent(userName || 'User');
-
-  // Jitsi iFrame URL with configuration parameters to disable third-party trackers & set premium options
-  const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${displayName}"&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.toolbarButtons=["microphone","camera","closedcaptions","fullscreen","fodeviceselection","hangup","chat","settings","raisehand","videoquality","tileview"]&interfaceConfig.SHOW_JITSI_WATERMARK=false&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false&interfaceConfig.APP_NAME=LifeFundies`;
-
-  const handleJoin = () => {
+  const handleJoin = async () => {
     setIsLoading(true);
-    setIsJoined(true);
-    // Simulate initial room loading wait
-    setTimeout(() => setIsLoading(false), 2000);
+    setError(null);
+    try {
+      const response = await fetch('/api/hms-create-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userName: userName || 'Guest' }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Could not start the video session.');
+      }
+
+      const authToken = await hmsActions.getAuthTokenByRoomCode({ roomCode: data.roomCode });
+      await hmsActions.join({ userName: data.userName, authToken });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start the video session.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLeave = () => {
-    setIsJoined(false);
     onLeave?.();
   };
 
-  if (!isJoined) {
+  if (!isConnected) {
     return (
       <div className="video-room-container">
         {/* Guide Avatar */}
@@ -66,46 +136,34 @@ export default function VideoRoom({ sessionId, userName, guideName, onLeave }: V
         <button
           onClick={handleJoin}
           type="button"
+          disabled={isLoading}
           className="btn btn-primary btn-lg video-room-join-btn"
         >
-          <Video size={18} />
-          Join Video Session
+          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
+          {isLoading ? 'Starting session...' : 'Join Video Session'}
         </button>
 
+        {error && <p className="video-room-note" style={{ color: 'var(--clr-danger, #ef4444)' }}>{error}</p>}
+
         <p className="video-room-note">
-          Your session is powered by Jitsi Meet — private, secure, and runs directly in your browser.
+          Your session is powered by 100ms — private, secure, and runs directly in your browser.
         </p>
       </div>
     );
   }
 
+  return <ActiveCall onLeave={handleLeave} />;
+}
+
+/**
+ * 📹 VideoRoom — Embedded 100ms session (TypeScript)
+ * The room is created on demand by the backend, which returns a room code
+ * the client exchanges for a short-lived auth token to join with the 100ms SDK.
+ */
+export default function VideoRoom(props: VideoRoomProps) {
   return (
-    <div className="video-room-active">
-      {isLoading && (
-        <div className="video-room-loading-overlay">
-          <Loader2 className="animate-spin" size={28} style={{ color: 'var(--clr-primary)' }} />
-          <p className="video-room-loading-text">Connecting to session room...</p>
-        </div>
-      )}
-
-      <iframe
-        ref={iframeRef}
-        src={jitsiUrl}
-        allow="camera *; microphone *; fullscreen *; display-capture *; autoplay *"
-        allowFullScreen
-        className="video-room-iframe"
-        onLoad={() => setIsLoading(false)}
-      />
-
-      {/* Leave overlay button */}
-      <button
-        onClick={handleLeave}
-        type="button"
-        className="btn btn-sm video-room-leave-btn"
-      >
-        <PhoneOff size={14} />
-        Leave Call
-      </button>
-    </div>
+    <HMSRoomProvider>
+      <VideoRoomInner {...props} />
+    </HMSRoomProvider>
   );
 }
