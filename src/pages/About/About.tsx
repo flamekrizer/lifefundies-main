@@ -12,16 +12,17 @@ const VALUES = ['Anonymity', 'Authenticity', 'Affordability', 'Always Human']
 export default function AboutPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
-      <section className="about-hero"style={{ backgroundImage: "url('./About Us.jpeg')" }}>
+      <section className="about-hero" style={{ backgroundImage: "url('./About Us.jpeg')" }}>
         <div className="about-hero__overlay" />
-        <div className="container about-hero__content" >
-          <nav className="page-breadcrumb" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
-            <span aria-hidden="true">/</span>
-            <span>About Us</span>
-          </nav>
-          <h1 className="display-2 about-hero__title">Our Approach to Life Guidance</h1>
-          <p className="body-lg about-hero__subtitle">
+        <div className="container about-hero__content">
+          <h1 className="about-hero__title">About Us</h1>
+          <p className="about-hero__subtitle">Our Approach to Life Guidance</p>
+        </div>
+      </section>
+
+      <section className="section about-intro">
+        <div className="container about-intro__inner">
+          <p className="body-lg text-muted">
             We don’t preach. We don’t judge. We walk with you — through confusion, overthinking, and self-doubt.
           </p>
           <div className="about-hero__actions">

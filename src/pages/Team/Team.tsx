@@ -165,18 +165,17 @@ function TeamCard({ member, featured = false }: { member: TeamMember; featured?:
 export default function TeamPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
-      <section className="team-hero"style={{ backgroundImage: "url('./Our team.jpeg')" }}>
+      <section className="team-hero" style={{ backgroundImage: "url('./Our team.jpeg')" }}>
         <div className="team-hero__overlay" />
         <div className="container team-hero__content">
-          <nav className="page-breadcrumb" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
-            <span aria-hidden="true">/</span>
-            <span>Team</span>
-          </nav>
-          <h1 className="display-2 team-hero__title">
-            We are not counsellors. We are companions in clarity.
-          </h1>
-          <p className="body-lg team-hero__subtitle">
+          <h1 className="team-hero__title">Team</h1>
+          <p className="team-hero__subtitle">We are not counsellors. We are companions in clarity.</p>
+        </div>
+      </section>
+
+      <section className="section about-intro">
+        <div className="container about-intro__inner">
+          <p className="body-lg text-muted">
             Real people solving real-life problems - honestly, privately, and humanly.
           </p>
           <div className="team-hero__actions">
