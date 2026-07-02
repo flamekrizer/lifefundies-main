@@ -1,0 +1,43 @@
+/* Card sizing/stacking for card-fan-carousel.tsx. Heights mirror the
+   breakpoints used in getHeightMultiplier() in card-fan-carousel.tsx. */
+
+.fan-layout {
+  height: 22rem;
+}
+
+.fan-card {
+  position: absolute;
+  width: 9rem;
+  aspect-ratio: 2 / 3;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  will-change: transform;
+  /* reset button defaults for <button> fan-cards (Tailwind preflight is off) */
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+}
+
+@media (min-width: 480px) {
+  .fan-layout { height: 26rem; }
+  .fan-card { width: 10rem; }
+}
+
+@media (min-width: 640px) {
+  .fan-layout { height: 28rem; }
+  .fan-card { width: 11.5rem; }
+}
+
+@media (min-width: 768px) {
+  .fan-layout { height: 34rem; }
+  .fan-card { width: 13.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .fan-layout { height: 38rem; }
+  .fan-card { width: 15rem; }
+}

@@ -4,6 +4,15 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap');
 
+/* Tailwind utilities only — preflight is intentionally skipped so it
+   doesn't reset the existing hand-built design system below. */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+
+/* Match Tailwind's dark: variant to this app's data-theme toggle
+   (set on documentElement in main.tsx) instead of prefers-color-scheme. */
+@custom-variant dark (&:is([data-theme="dark"], [data-theme="dark"] *));
+
 /* ── CSS Custom Properties ── */
 :root {
   /* Brand Colors */

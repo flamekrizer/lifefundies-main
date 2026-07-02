@@ -7,6 +7,7 @@ import { MOCK_TESTIMONIALS, formatCurrency, getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
 import { subscribeToMentors } from '../../lib/userRepository'
 import { callIRA, getIRAStatus } from '../../lib/iraClient'
+import SocialCards, { type CardItem } from '../../components/ui/card-fan-carousel'
 
 const DOMAIN_IMAGES: Record<string, string> = {
   career: '/All The Hints In Your Natal Chart That Can Help You Crystalize Your Career and Purpose  — Holisticism.jpg',
@@ -598,10 +599,14 @@ function StatsBar() {
   )
 }
 
+const DOMAIN_FAN_CARDS: CardItem[] = LIFE_DOMAINS.map((domain, i) => ({
+  imgUrl: getDomainImage(domain.id, i),
+  alt: domain.label,
+  label: domain.label,
+}))
+
 function DomainsSection() {
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null)
-  const [activeStoryIndex, setActiveStoryIndex] = useState(0)
-  const storyRefs = useRef<Array<HTMLButtonElement | null>>([])
   const selectedDomain = LIFE_DOMAINS.find(domain => domain.id === selectedDomainId)
   const selectedDomainIndex = selectedDomain ? LIFE_DOMAINS.findIndex(domain => domain.id === selectedDomain.id) : -1
   const selectedAreas = selectedDomain ? DOMAIN_PROBLEM_AREAS[selectedDomain.id] || [] : []
@@ -622,28 +627,6 @@ function DomainsSection() {
     }
   }, [selectedDomain])
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        const visible = entries
-          .filter(entry => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-
-        if (visible) {
-          const index = Number((visible.target as HTMLElement).dataset.domainIndex)
-          if (!Number.isNaN(index)) setActiveStoryIndex(index)
-        }
-      },
-      { threshold: [0.35, 0.6, 0.85], rootMargin: '-22% 0px -36% 0px' }
-    )
-
-    storyRefs.current.forEach(node => {
-      if (node) observer.observe(node)
-    })
-
-    return () => observer.disconnect()
-  }, [])
-
   return (
     <section className="section domains-section" id="domains">
       <div className="container">
@@ -654,34 +637,11 @@ function DomainsSection() {
             LifeFundies operates on a comprehensive 18-domain life model — covering every dimension of human development and growth.
           </p>
         </div>
-        <div className="domains-story">
-          <div className="domains-story__bar" aria-hidden="true">
-            <span>{String(activeStoryIndex + 1).padStart(2, '0')} / {LIFE_DOMAINS.length}</span>
-            <div><i style={{ width: `${((activeStoryIndex + 1) / LIFE_DOMAINS.length) * 100}%` }} /></div>
-          </div>
 
-          <div className="domains-story__list">
-          {LIFE_DOMAINS.map((domain, i) => (
-            <button
-              key={domain.id}
-              type="button"
-              ref={node => { storyRefs.current[i] = node }}
-              data-domain-index={i}
-              className={`domain-card domain-card--story animate-fadeInUp delay-${Math.min((i % 6 + 1) * 100, 600) as 100 | 200 | 300 | 400 | 500 | 600} ${activeStoryIndex === i ? 'domain-card--active' : ''}`}
-              style={{
-                '--domain-color': domain.color,
-                '--domain-image': `url("${getDomainImage(domain.id, i)}")`,
-              } as React.CSSProperties}
-              id={`domain-${domain.id}`}
-              onClick={() => setSelectedDomainId(domain.id)}
-            >
-              <h3 className="domain-card__label">{domain.label}</h3>
-              <p className="domain-card__desc body-sm text-muted">{domain.description}</p>
-              <div className="domain-card__arrow">View areas</div>
-            </button>
-          ))}
-          </div>
-        </div>
+        <SocialCards
+          cards={DOMAIN_FAN_CARDS}
+          onCardClick={index => setSelectedDomainId(LIFE_DOMAINS[index].id)}
+        />
       </div>
 
       {selectedDomain && (
