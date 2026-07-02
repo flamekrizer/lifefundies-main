@@ -223,7 +223,6 @@ export const updateMentorProfile = async (
         return [categoryPrices || 1]
       })),
       guideStatus: 'profile_complete',
-      isVerified: true,
       updatedAt: serverTimestamp(),
     }
     await updateDoc(userDocRef, payload)
