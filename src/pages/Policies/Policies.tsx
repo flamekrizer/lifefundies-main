@@ -195,7 +195,7 @@ export function PrivacyPage() {
 
       <PolicyBlock title="Payments and Third-Party Integrations">
         <p>Payments are processed through Cashfree. LifeFundies does not store full card, UPI, or bank credentials. Payment status and transaction references may be stored for booking confirmation and support.</p>
-        <p>We may use third-party services such as Cashfree, WhatsApp, Zoom, Google Meet, Jitsi/video rooms, email providers, hosting services, and analytics or automation tools. These platforms have their own privacy terms, and we transfer only the minimum data needed for the service.</p>
+        <p>We may use third-party services such as Cashfree, WhatsApp, Zoom, Google Meet, 100ms/video rooms, email providers, hosting services, and analytics or automation tools. These platforms have their own privacy terms, and we transfer only the minimum data needed for the service.</p>
       </PolicyBlock>
 
       <PolicyBlock title="Misuse and Bans">

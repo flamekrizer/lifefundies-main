@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import LandingPage from './pages/Landing/Landing'
 import { LoginPage, RegisterPage, MentorRegisterPage, ForgotPasswordPage } from './pages/Auth/Auth'
+import VerifyEmailPage from './pages/Auth/VerifyEmailPage'
 import OnboardingPage from './pages/Onboarding/Onboarding'
 import DashboardPage from './pages/Dashboard/Dashboard'
 import MentorsPage from './pages/Mentors/Mentors'
@@ -137,6 +138,7 @@ export default function App() {
         <Route path="/get-started" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/mentor-register" element={<MentorRegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 

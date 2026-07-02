@@ -14,7 +14,7 @@ LifeFundies is built as a **Single Page Application (SPA)** using **Vite + React
     *   *Authentication*: Provides secure credential processing and standard forgot-password resets.
     *   *Firestore*: NoSQL document store with realtime listener support, storing users, bookings, and posts.
 *   **Zustand**: A lightweight, hook-based global state manager chosen over Redux to simplify authentication state and notification alerts with near-zero boilerplate.
-*   **Daily.co WebRTC**: Leveraged for reliable WebRTC live video room hosting without requiring custom media servers.
+*   **100ms WebRTC**: Leveraged for reliable WebRTC live video room hosting without requiring custom media servers.
 *   **Cashfree SDK**: Integrated directly to process secure INR payments on client bookings with sandbox testing support.
 
 ---
@@ -38,7 +38,7 @@ lifefundies/
 │   │   ├── layout/         # Navigation bars and footer components
 │   │   ├── BookingModal.tsx # Booking scheduler & Cashfree payment loader
 │   │   ├── SlotSelection.tsx # Interactive date/time grid picker for sessions
-│   │   └── VideoRoom.tsx    # Live WebRTC daily.co video frame
+│   │   └── VideoRoom.tsx    # Live WebRTC 100ms video frame
 │   ├── pages/              # Views mapped directly to router paths
 │   │   ├── Admin/          # Admin stats dashboard & verified status toggles
 │   │   ├── Auth/           # Unified credential/reset cards
@@ -76,7 +76,7 @@ lifefundies/
     3. Handles success/failure callbacks to confirm booking and create session in Firestore.
 
 ### C. Live Video Session Room (`src/components/VideoRoom.tsx`)
-*   Uses `@daily-co/daily-js` to embed WebRTC video nodes inside the browser.
+*   Uses `@100mslive/react-sdk` to embed WebRTC video nodes inside the browser, joining via a backend-issued room code.
 *   Handles event lifecycle (joining, leaving, mic/camera toggles) with automatic WebRTC frame cleanup when users exit the room.
 
 ---

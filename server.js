@@ -9,6 +9,7 @@ import cashfreeVerifyOrder from './api/cashfree-verify-order.js'
 import cashfreeWebhook from './api/cashfree-webhook.js'
 import chatHandler from './api/chat.js'
 import chatStatusHandler from './api/chat/status.js'
+import hmsCreateRoom from './api/hms-create-room.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -65,6 +66,7 @@ app.post('/api/cashfree-verify-order', cashfreeVerifyOrder)
 app.post('/api/cashfree-webhook', cashfreeWebhook)
 app.post('/api/chat', chatHandler)
 app.get('/api/chat/status', chatStatusHandler)
+app.post('/api/hms-create-room', hmsCreateRoom)
 
 const normalizeRoomId = (value = '') =>
   String(value)

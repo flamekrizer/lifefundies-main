@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield, X, Loader } from 'lucide-react'
 import { useAuthStore } from '../stores'
 import type { User as UserType } from '../types'
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously } from '../lib/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, EMAIL_VERIFICATION_PENDING } from '../lib/authService'
 
 export default function AuthModal() {
   const { authModalOpen, setAuthModalOpen, setUser } = useAuthStore()
@@ -76,13 +76,18 @@ export default function AuthModal() {
     setError('')
     try {
       let loggedInUser: UserType
-      
+
       if (isLogin) {
         loggedInUser = await signInWithEmail(email, password, role)
       } else {
-        loggedInUser = await signUpWithEmail(email, password, name, phone, 'user')
+        const signUpResult = await signUpWithEmail(email, password, name, phone, 'user')
+        if (signUpResult === EMAIL_VERIFICATION_PENDING) {
+          setError('A verification link has been sent to your email. Please verify your account before signing in.')
+          return
+        }
+        loggedInUser = signUpResult
       }
-      
+
       setUser(loggedInUser)
       setAuthModalOpen(false)
       if (loggedInUser.role === 'mentor') {

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores'
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword } from '../../lib/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInAnonymously, resetPassword, EMAIL_VERIFICATION_PENDING } from '../../lib/authService'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
@@ -23,7 +23,9 @@ export function LoginPage() {
     try {
       const loggedInUser = await signInWithGoogle(role)
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -44,7 +46,9 @@ export function LoginPage() {
     try {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -65,9 +69,10 @@ export function LoginPage() {
     setError('')
     try {
       const loggedInUser = await signInWithEmail(email, password, role)
-      
       setUser(loggedInUser)
-      if (loggedInUser.role === 'mentor') {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
         navigate('/mentor-portal')
       } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
@@ -208,7 +213,11 @@ export function RegisterPage() {
     try {
       const loggedInUser = await signInWithGoogle('user')
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -227,7 +236,11 @@ export function RegisterPage() {
     try {
       const loggedInUser = await signInAnonymously()
       setUser(loggedInUser)
-      if (loggedInUser.onboardingComplete) {
+      if (loggedInUser.role === 'admin') {
+        navigate('/admin')
+      } else if (loggedInUser.role === 'mentor') {
+        navigate('/mentor-portal')
+      } else if (loggedInUser.onboardingComplete) {
         navigate('/dashboard')
       } else {
         navigate('/onboarding')
@@ -244,10 +257,19 @@ export function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const newUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
-      
-      setUser(newUser)
-      navigate('/onboarding')
+      const signUpResult = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+
+      if (signUpResult === EMAIL_VERIFICATION_PENDING) {
+        setError('A verification link has been sent to your email. Please verify your account before signing in.')
+        return
+      }
+
+      setUser(signUpResult)
+      if (signUpResult.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/onboarding')
+      }
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Failed to create account')
@@ -419,7 +441,12 @@ export function MentorRegisterPage() {
     try {
       let activeUser = user
       if (!activeUser) {
-        activeUser = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+        const signUpResult = await signUpWithEmail(form.email, form.password, form.name, form.phone, 'user')
+        if (signUpResult === EMAIL_VERIFICATION_PENDING) {
+          setError('Please verify your email before submitting your mentor application.')
+          return
+        }
+        activeUser = signUpResult
         setUser(activeUser)
       }
       await submitApplication(activeUser.uid)
