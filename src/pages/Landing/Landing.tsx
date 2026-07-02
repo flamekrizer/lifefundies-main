@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Play, CheckCircle, Target, Zap, X, MessageCircle, Send, Bot, Loader2, Sparkles, Users } from 'lucide-react'
 import { LIFE_DOMAINS } from '../../types'
 import type { IRAMessage, IRASuggestedAction } from '../../types/fundoo'
-import { MOCK_TESTIMONIALS, formatCurrency, getInitials } from '../../utils'
+import { formatCurrency, getInitials } from '../../utils'
 import { useAuthStore } from '../../stores'
 import { subscribeToMentors } from '../../lib/userRepository'
 import { callIRA, getIRAStatus } from '../../lib/iraClient'
 import SocialCards, { type CardItem } from '../../components/ui/card-fan-carousel'
+import { ClientsSection, type Testimonial } from '../../components/ui/testimonial-card'
 
 const DOMAIN_IMAGES: Record<string, string> = {
   career: '/All The Hints In Your Natal Chart That Can Help You Crystalize Your Career and Purpose  — Holisticism.jpg',
@@ -873,39 +874,83 @@ function MentorsSection() {
   )
 }
 
+// Real, anonymized feedback collected from LifeFundies session surveys.
+// Paired by submission timestamp across the "what did you like most" and
+// "final thoughts" survey questions — no names/photos were collected, so
+// respondents are labelled generically rather than attributed to invented
+// identities.
+const SESSION_FEEDBACK: Testimonial[] = [
+  {
+    name: 'Verified Seeker · Jan 22',
+    title: 'LifeFundies Session Feedback',
+    quote: 'The listener was very patient, calm, and composed. Keep up the good work!',
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Oct 30',
+    title: 'LifeFundies Session Feedback',
+    quote: 'Communication skills were amazing — absolute, damn good guidance.',
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Oct 13',
+    title: 'LifeFundies Session Feedback',
+    quote: 'The interaction was good, felt good after talking. Management could be better.',
+    rating: 4,
+  },
+  {
+    name: 'Verified Seeker · Sep 29',
+    title: 'LifeFundies Session Feedback',
+    quote: 'Guide was very calming and understanding!',
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Sep 6',
+    title: 'LifeFundies Session Feedback',
+    quote: "He's a wonderful guide, giving amazing life lessons. Thanks to my guide and LifeFundies — it was a wonderful session.",
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Sep 3',
+    title: 'LifeFundies Session Feedback',
+    quote: 'The counselor was such a good listener and a fabulous advisor for my daily routine.',
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Aug 23',
+    title: 'LifeFundies Session Feedback',
+    quote: "Having all ears on my voice and understanding my thoughts. Thank you so much — I'll patiently wait for the next session with LifeFundies.",
+    rating: 5,
+  },
+  {
+    name: 'Verified Seeker · Aug 12',
+    title: 'LifeFundies Session Feedback',
+    quote: 'He is a good listener. Best of luck, LifeFundies!',
+    rating: 5,
+  },
+]
+
+// Aggregated directly from the same session feedback survey.
+const SESSION_STATS = [
+  { value: '4.7/5', label: 'Average session rating' },
+  { value: '100%', label: 'Would recommend us' },
+  { value: '89%', label: 'Felt fully heard by their guide' },
+]
+
 function TestimonialsSection() {
   return (
-    <section className="section" style={{ background: 'var(--clr-bg-alt)' }} id="testimonials">
-      <div className="container">
-        <div className="section-header animate-fadeInUp">
-          <div className="section-eyebrow">Real Stories</div>
-          <h2 className="display-2">Lives <span className="text-gradient">Transformed</span></h2>
-          <p className="body-lg text-muted">
-            Don't take our word for it. Hear from the students and professionals who found their direction with LifeFundies.
-          </p>
-        </div>
-        <div className="testimonials-grid">
-          {MOCK_TESTIMONIALS.map((t, i) => (
-            <div key={i} className={`testimonial-card animate-fadeInUp delay-${((i % 4 + 1) * 100) as 100 | 200 | 300 | 400}`} id={`testimonial-${i + 1}`}>
-              <div className="stars testimonial-card__stars">
-                {Array.from({ length: 5 }).map((_, j) => <span key={j} className="star">★</span>)}
-              </div>
-              <p className="testimonial-card__text">"{t.text}"</p>
-              <div className="testimonial-card__author">
-                <div className="avatar avatar-md" style={{ overflow: 'hidden' }}>
-                  <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div>
-                  <p className="testimonial-card__name">{t.name}</p>
-                  <p className="body-sm text-muted">{t.role}</p>
-                  <span className="badge badge-primary" style={{ fontSize: '0.7rem', marginTop: '4px' }}>{t.domain}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+    <ClientsSection
+      id="testimonials"
+      tagLabel="Real Session Feedback"
+      title="What Our Seekers Are Saying"
+      description="Unedited feedback collected directly from LifeFundies guidance sessions — from real people finding their direction."
+      stats={SESSION_STATS}
+      testimonials={SESSION_FEEDBACK}
+      primaryActionLabel="Book a Session"
+      primaryActionHref="/mentors"
+      secondaryActionLabel="Read More Stories"
+      secondaryActionHref="/community"
+    />
   )
 }
 

@@ -13,6 +13,34 @@
    (set on documentElement in main.tsx) instead of prefers-color-scheme. */
 @custom-variant dark (&:is([data-theme="dark"], [data-theme="dark"] *));
 
+/* Map shadcn's semantic color tokens (bg-background, text-foreground, …)
+   onto this app's existing --clr-* variables so both systems share one
+   source of truth and stay in sync across the light/dark toggle. `inline`
+   makes Tailwind re-evaluate these at the point of use instead of baking
+   in a static value, which is required since --clr-* changes under
+   :root[data-theme="dark"]. */
+@theme inline {
+  --color-background: var(--clr-bg);
+  --color-foreground: var(--clr-text);
+  --color-card: var(--clr-bg-card);
+  --color-card-foreground: var(--clr-text);
+  --color-popover: var(--clr-bg-card);
+  --color-popover-foreground: var(--clr-text);
+  --color-muted: var(--clr-bg-alt);
+  --color-muted-foreground: var(--clr-text-muted);
+  --color-border: var(--clr-border);
+  --color-input: var(--clr-border);
+  --color-ring: var(--clr-primary);
+  --color-primary: var(--clr-primary);
+  --color-primary-foreground: var(--clr-primary-foreground);
+  --color-secondary: var(--clr-secondary);
+  --color-secondary-foreground: var(--clr-text);
+  --color-accent: var(--clr-accent);
+  --color-accent-foreground: var(--clr-text);
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #FFFFFF;
+}
+
 /* ── CSS Custom Properties ── */
 :root {
   /* Brand Colors */
@@ -20,6 +48,7 @@
   --clr-primary-light: #60A5FA;
   --clr-primary-dark: #1D4ED8;
   --clr-primary-glow: rgba(37, 99, 235, 0.14);
+  --clr-primary-foreground: #FFFFFF;
 
   --clr-accent: #C9A9A9;           /* Rosy Taupe */
   --clr-accent-light: #D8BEBE;
@@ -104,6 +133,7 @@
   --clr-primary-light: #BAE6FD;
   --clr-primary-dark: #38BDF8;
   --clr-primary-glow: rgba(125, 211, 252, 0.18);
+  --clr-primary-foreground: #06101E;
 
   --clr-accent: #F0B9B2;
   --clr-accent-light: #FFD2CA;
