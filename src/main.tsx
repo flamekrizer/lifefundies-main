@@ -15,3 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>,
 )
+
+window.requestAnimationFrame(() => {
+  document.getElementById('initial-preloader')?.remove()
+})
