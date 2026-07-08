@@ -138,7 +138,7 @@ function TeamCard({ member, featured = false }: { member: TeamMember; featured?:
 export default function TeamPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
-      <section className="team-hero" style={{ backgroundImage: "url('./Our team.jpeg')" }}>
+      <section className="team-hero">
         <div className="team-hero__overlay" />
         <div className="container team-hero__content">
           <h1 className="team-hero__title">Team</h1>

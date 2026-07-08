@@ -12,7 +12,7 @@ const VALUES = ['Anonymity', 'Authenticity', 'Affordability', 'Always Human']
 export default function AboutPage() {
   return (
     <div className="page-wrapper animate-fadeIn">
-      <section className="about-hero" style={{ backgroundImage: "url('./About Us.jpeg')" }}>
+      <section className="about-hero">
         <div className="about-hero__overlay" />
         <div className="container about-hero__content">
           <h1 className="about-hero__title">About Us</h1>
